@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, ChevronRight } from 'lucide-react'
 import { useDirectory } from '../lib/DirectoryContext'
-import { formatCnpj, orgSegments } from '../lib/directory'
+import { formatCnpj, isActive, orgSegments, statusLabel } from '../lib/directory'
 import { Badge, Card, PageHeader, SegmentBadges } from '../components/ui'
 
 const ALL_ROLES = ['CONTA', 'DADOS', 'PAGTO', 'CCORR']
@@ -120,6 +120,12 @@ export function Participants() {
                   <ChevronRight size={18} className="shrink-0 text-[var(--color-muted)]" />
                 </div>
                 <div className="mt-3 flex flex-wrap gap-1">
+                  <Badge
+                    tone={isActive(org.Status) ? 'ok' : 'neutral'}
+                    title={`Status no diretório: ${statusLabel(org.Status)}`}
+                  >
+                    {statusLabel(org.Status)}
+                  </Badge>
                   {roles.map((r) => (
                     <Badge key={r} tone="info">
                       {r}
