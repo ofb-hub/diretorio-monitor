@@ -122,6 +122,24 @@ export function serverSegments(srv: AuthorisationServer): Segments {
   return { pf: FLAG_PF in flags, pj: FLAG_PJ in flags }
 }
 
+// ---- Status ----
+
+/** Rótulo amigável para o campo Status (Active -> Ativo). */
+export function statusLabel(status: string | null | undefined): string {
+  switch (status) {
+    case 'Active':
+      return 'Ativo'
+    case 'Inactive':
+      return 'Inativo'
+    default:
+      return status ?? '—'
+  }
+}
+
+export function isActive(status: string | null | undefined): boolean {
+  return status === 'Active'
+}
+
 // ---- Ciclo de vida do Authorisation Server ----
 // O campo Status vem sempre "Active"; o real sinal de descontinuação/aposentadoria
 // está em DeprecatedDate / RetirementDate / SupersededByAuthorisationServerId.

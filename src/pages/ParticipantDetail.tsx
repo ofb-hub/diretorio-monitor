@@ -7,10 +7,12 @@ import {
   formatCnpj,
   orgSegments,
   parseCertDate,
+  isActive,
   prettyFamily,
   serverLabel,
   serverLifecycle,
   serverSegments,
+  statusLabel,
 } from '../lib/directory'
 import {
   Badge,
@@ -212,6 +214,12 @@ function ServerCard({
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
+          <Badge
+            tone={isActive(srv.Status) ? 'ok' : 'neutral'}
+            title={`Status no diretório: ${statusLabel(srv.Status)}`}
+          >
+            {statusLabel(srv.Status)}
+          </Badge>
           {lifecycle.map((b) => (
             <Badge key={b.label} tone={b.tone} title={b.title}>
               {b.label}
