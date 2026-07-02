@@ -212,6 +212,12 @@ function ServerCard({
           <div className="truncate text-xs text-[var(--color-muted)]">
             {srv.Issuer ?? 'sem issuer'}
           </div>
+          <div
+            className="truncate font-mono text-[11px] text-[var(--color-muted)]"
+            title={`Authorisation Server ID: ${srv.AuthorisationServerId}`}
+          >
+            ID {srv.AuthorisationServerId}
+          </div>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <Badge
