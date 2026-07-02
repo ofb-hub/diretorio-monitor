@@ -122,6 +122,73 @@ export function serverSegments(srv: AuthorisationServer): Segments {
   return { pf: FLAG_PF in flags, pj: FLAG_PJ in flags }
 }
 
+// ---- Ciclo de vida do Authorisation Server ----
+// O campo Status vem sempre "Active"; o real sinal de descontinuação/aposentadoria
+// está em DeprecatedDate / RetirementDate / SupersededByAuthorisationServerId.
+
+export type LifecycleTone = 'warn' | 'danger' | 'info' | 'neutral'
+
+export interface LifecycleBadge {
+  label: string
+  tone: LifecycleTone
+  title: string
+}
+
+function parseIsoDate(value: string | null): Date | null {
+  if (!value) return null
+  const d = new Date(value)
+  return isNaN(d.getTime()) ? null : d
+}
+
+function fmtDate(d: Date): string {
+  // Datas do diretório são meia-noite UTC; formata em UTC para não deslocar o dia.
+  return d.toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+}
+
+/**
+ * Estado de ciclo de vida do server, derivado das datas.
+ * Retorna badges prontos para exibição (vazio = ativo/normal).
+ */
+export function serverLifecycle(
+  srv: AuthorisationServer,
+  now = new Date(),
+): LifecycleBadge[] {
+  const badges: LifecycleBadge[] = []
+  const dep = parseIsoDate(srv.DeprecatedDate)
+  const ret = parseIsoDate(srv.RetirementDate)
+
+  if (dep) {
+    badges.push(
+      dep <= now
+        ? { label: 'Descontinuado', tone: 'warn', title: `Descontinuado em ${fmtDate(dep)}` }
+        : {
+            label: 'Descontinuação agendada',
+            tone: 'info',
+            title: `Descontinuação prevista para ${fmtDate(dep)}`,
+          },
+    )
+  }
+  if (ret) {
+    badges.push(
+      ret <= now
+        ? { label: 'Aposentado', tone: 'danger', title: `Aposentado em ${fmtDate(ret)}` }
+        : {
+            label: 'Aposentadoria agendada',
+            tone: 'warn',
+            title: `Aposentadoria prevista para ${fmtDate(ret)}`,
+          },
+    )
+  }
+  if (srv.SupersededByAuthorisationServerId) {
+    badges.push({
+      label: 'Substituído',
+      tone: 'neutral',
+      title: `Substituído por outro Authorisation Server (${srv.SupersededByAuthorisationServerId})`,
+    })
+  }
+  return badges
+}
+
 /** Segmentos consolidados da organização (união dos seus servers). */
 export function orgSegments(org: Organisation): Segments {
   let pf = false

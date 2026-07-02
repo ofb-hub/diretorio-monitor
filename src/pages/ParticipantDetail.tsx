@@ -9,6 +9,7 @@ import {
   parseCertDate,
   prettyFamily,
   serverLabel,
+  serverLifecycle,
   serverSegments,
 } from '../lib/directory'
 import {
@@ -185,6 +186,7 @@ function ServerCard({
   const apis = srv.ApiResources ?? []
   const certs = srv.AuthorisationServerCertifications ?? []
   const seg = serverSegments(srv)
+  const lifecycle = serverLifecycle(srv)
   const groups = useMemo(() => groupApis(apis, groupBy), [apis, groupBy])
 
   return (
@@ -209,7 +211,12 @@ function ServerCard({
             {srv.Issuer ?? 'sem issuer'}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {lifecycle.map((b) => (
+            <Badge key={b.label} tone={b.tone} title={b.title}>
+              {b.label}
+            </Badge>
+          ))}
           <SegmentBadges pf={seg.pf} pj={seg.pj} emptyLabel={null} />
           <Badge tone="neutral">{apis.length} APIs</Badge>
           {srv.SupportsRedirect && <Badge tone="neutral">Redirect</Badge>}
@@ -231,6 +238,21 @@ function ServerCard({
             </div>
             <CopyableId id={srv.AuthorisationServerId} label="Authorisation Server ID" />
           </div>
+
+          {/* Ciclo de vida (descontinuação / aposentadoria) */}
+          {lifecycle.length > 0 && (
+            <div className="mb-4">
+              <div className="mb-1 text-xs text-[var(--color-muted)]">Ciclo de vida</div>
+              <div className="flex flex-col gap-1">
+                {lifecycle.map((b) => (
+                  <div key={b.label} className="flex items-center gap-2 text-sm">
+                    <Badge tone={b.tone}>{b.label}</Badge>
+                    <span className="text-[var(--color-muted)]">{b.title}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Links do server */}
           <div className="mb-4 flex flex-wrap gap-2 text-xs">

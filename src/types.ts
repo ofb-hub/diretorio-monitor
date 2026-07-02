@@ -46,6 +46,9 @@ export interface AuthorisationServer {
   PayloadSigningCertLocationUri: string | null
   Status: string
   CreatedAt: string | null
+  DeprecatedDate: string | null
+  RetirementDate: string | null
+  SupersededByAuthorisationServerId: string | null
   SupportsCiba: boolean
   SupportsDCR: boolean
   SupportsRedirect: boolean
