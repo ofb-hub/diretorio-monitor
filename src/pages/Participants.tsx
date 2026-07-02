@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Search, ChevronRight } from 'lucide-react'
 import { useDirectory } from '../lib/DirectoryContext'
 import { formatCnpj, isActive, orgSegments, statusLabel } from '../lib/directory'
-import { Badge, Card, PageHeader, SegmentBadges } from '../components/ui'
+import { Badge, Card, IdTag, PageHeader, SegmentBadges } from '../components/ui'
 
 const ALL_ROLES = ['CONTA', 'DADOS', 'PAGTO', 'CCORR']
 
@@ -154,12 +154,8 @@ export function Participants() {
                   <span>{serverCount} servers</span>
                   <span>{apiCount} APIs</span>
                 </div>
-                <div
-                  className="mt-3 border-t border-[var(--color-border)] pt-2 font-mono text-[11px] text-[var(--color-muted)]"
-                  title={`Organisation ID: ${org.OrganisationId}`}
-                >
-                  <span className="text-[var(--color-muted)]/70">ID </span>
-                  {org.OrganisationId}
+                <div className="mt-3 border-t border-[var(--color-border)] pt-3">
+                  <IdTag id={org.OrganisationId} className="w-full" />
                 </div>
               </Card>
             </Link>

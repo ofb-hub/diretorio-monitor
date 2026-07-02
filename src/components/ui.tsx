@@ -145,6 +145,24 @@ export function PageHeader({
 
 // ---- Badge de status de certificação ----
 
+// ---- Tag de ID (destaque, não copiável) ----
+// Usado nos cards/headers para destacar o UUID sem virar botão (pode ficar
+// dentro de <a>/<button>). Para copiar, use CopyableId.
+
+export function IdTag({ id, className = '' }: { id: string; className?: string }) {
+  return (
+    <span
+      title={`ID: ${id}`}
+      className={`inline-flex max-w-full items-center gap-1.5 rounded-md border border-[var(--color-brand-2)]/30 bg-[var(--color-brand-2)]/10 px-2 py-0.5 ${className}`}
+    >
+      <span className="text-[10px] font-bold tracking-wider text-[var(--color-brand-2)] uppercase">
+        ID
+      </span>
+      <span className="truncate font-mono text-[11px] text-[var(--color-text)]">{id}</span>
+    </span>
+  )
+}
+
 // ---- ID copiável (UUID) ----
 
 export function CopyableId({

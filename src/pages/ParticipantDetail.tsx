@@ -19,6 +19,7 @@ import {
   Card,
   CertHealthBadge,
   CopyableId,
+  IdTag,
   PageHeader,
   SegmentBadges,
 } from '../components/ui'
@@ -212,11 +213,8 @@ function ServerCard({
           <div className="truncate text-xs text-[var(--color-muted)]">
             {srv.Issuer ?? 'sem issuer'}
           </div>
-          <div
-            className="truncate font-mono text-[11px] text-[var(--color-muted)]"
-            title={`Authorisation Server ID: ${srv.AuthorisationServerId}`}
-          >
-            ID {srv.AuthorisationServerId}
+          <div className="mt-1">
+            <IdTag id={srv.AuthorisationServerId} />
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
