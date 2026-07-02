@@ -113,9 +113,6 @@ export function Participants() {
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         {filtered.map((org) => {
-          const roles = [
-            ...new Set((org.OrgDomainRoleClaims ?? []).map((r) => r.Role).filter(Boolean)),
-          ] as string[]
           const serverCount = (org.AuthorisationServers ?? []).length
           const apiCount = (org.AuthorisationServers ?? []).reduce(
             (n, s) => n + (s.ApiResources ?? []).length,
@@ -143,11 +140,6 @@ export function Participants() {
                   >
                     {statusLabel(org.Status)}
                   </Badge>
-                  {roles.map((r) => (
-                    <Badge key={r} tone="info">
-                      {r}
-                    </Badge>
-                  ))}
                   <SegmentBadges pf={seg.pf} pj={seg.pj} emptyLabel={null} />
                 </div>
                 <div className="mt-3 flex gap-4 text-xs text-[var(--color-muted)]">
