@@ -7,7 +7,7 @@ import { Badge, Card, PageHeader, SegmentBadges } from '../components/ui'
 
 const ALL_ROLES = ['CONTA', 'DADOS', 'PAGTO', 'CCORR']
 
-type SegFilter = '' | 'pf' | 'pj'
+type SegFilter = '' | 'pf' | 'pj' | 'none'
 
 export function Participants() {
   const { organisations } = useDirectory()
@@ -28,6 +28,7 @@ export function Participants() {
           const seg = orgSegments(org)
           if (segment === 'pf' && !seg.pf) return false
           if (segment === 'pj' && !seg.pj) return false
+          if (segment === 'none' && (seg.pf || seg.pj)) return false
         }
         if (!q) return true
         const nameHit =
@@ -83,6 +84,12 @@ export function Participants() {
           </FilterChip>
           <FilterChip active={segment === 'pj'} onClick={() => setSegment(segment === 'pj' ? '' : 'pj')}>
             PJ
+          </FilterChip>
+          <FilterChip
+            active={segment === 'none'}
+            onClick={() => setSegment(segment === 'none' ? '' : 'none')}
+          >
+            Sem segmento
           </FilterChip>
         </div>
       </div>

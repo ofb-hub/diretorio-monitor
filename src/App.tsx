@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import { DirectoryProvider, useDirectory } from './lib/DirectoryContext'
 import { Layout } from './components/Layout'
 import { ErrorState, Spinner } from './components/ui'
@@ -20,9 +20,12 @@ function AppContent() {
 
   return (
     <Routes>
-      <Route path="/" element={<Dashboard />} />
+      {/* App abre em Participantes. Dashboard/APIs/Certificações seguem no código,
+          acessíveis por URL, mas fora do menu por enquanto. */}
+      <Route path="/" element={<Navigate to="/participantes" replace />} />
       <Route path="/participantes" element={<Participants />} />
       <Route path="/participantes/:id" element={<ParticipantDetail />} />
+      <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/apis" element={<Apis />} />
       <Route path="/certificacoes" element={<Certifications />} />
       <Route

@@ -1,21 +1,17 @@
 import { NavLink } from 'react-router-dom'
-import {
-  Building2,
-  LayoutDashboard,
-  ShieldCheck,
-  Boxes,
-  RefreshCw,
-  Landmark,
-} from 'lucide-react'
+import { Building2, RefreshCw, Landmark } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useDirectory } from '../lib/DirectoryContext'
 import { formatDateTime } from '../lib/directory'
 
+// Abas temporariamente desabilitadas (Dashboard, APIs, Certificações).
+// As páginas e rotas continuam no código — basta reincluir aqui para reativar.
+// import { LayoutDashboard, ShieldCheck, Boxes } from 'lucide-react'
 const nav = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/participantes', label: 'Participantes', icon: Building2 },
-  { to: '/apis', label: 'APIs', icon: Boxes },
-  { to: '/certificacoes', label: 'Certificações', icon: ShieldCheck },
+  { to: '/participantes', label: 'Participantes', icon: Building2, end: false },
+  // { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  // { to: '/apis', label: 'APIs', icon: Boxes },
+  // { to: '/certificacoes', label: 'Certificações', icon: ShieldCheck },
 ]
 
 export function Layout({ children }: { children: ReactNode }) {
