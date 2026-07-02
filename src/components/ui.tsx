@@ -96,6 +96,29 @@ export function Spinner({ label }: { label?: string }) {
   )
 }
 
+/** Skeleton do primeiro carregamento — imita a lista de participantes. */
+export function ListSkeleton() {
+  return (
+    <div>
+      <div className="mb-2 h-8 w-52 animate-pulse rounded-lg bg-[var(--color-surface-2)]" />
+      <div className="mb-6 h-4 w-64 animate-pulse rounded bg-[var(--color-surface)]" />
+      <div className="mb-4 h-10 w-full animate-pulse rounded-lg bg-[var(--color-surface)]" />
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 9 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-44 animate-pulse rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]"
+            style={{ animationDelay: `${i * 80}ms` }}
+          />
+        ))}
+      </div>
+      <div className="mt-8 text-center text-sm text-[var(--color-muted)]">
+        Carregando diretório do Open Finance Brasil…
+      </div>
+    </div>
+  )
+}
+
 export function ErrorState({
   message,
   onRetry,
@@ -145,20 +168,46 @@ export function PageHeader({
 
 // ---- Badge de status de certificação ----
 
-// ---- Tag de ID (destaque, não copiável) ----
-// Usado nos cards/headers para destacar o UUID sem virar botão (pode ficar
-// dentro de <a>/<button>). Para copiar, use CopyableId.
+// ---- Tag de ID (destaque, clique copia) ----
+// Usado nos cards/headers. É um <span role="button"> (não <button>) para
+// poder viver dentro de <a>/<button> sem HTML inválido; o clique copia o ID
+// e NÃO navega/expande (preventDefault + stopPropagation).
 
 export function IdTag({ id, className = '' }: { id: string; className?: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const copy = async (e: React.MouseEvent | React.KeyboardEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    try {
+      await navigator.clipboard.writeText(id)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // clipboard indisponível — ignora silenciosamente
+    }
+  }
+
   return (
     <span
-      title={`ID: ${id}`}
-      className={`inline-flex max-w-full items-center gap-1.5 rounded-md border border-[var(--color-brand-2)]/30 bg-[var(--color-brand-2)]/10 px-2 py-0.5 ${className}`}
+      role="button"
+      tabIndex={0}
+      onClick={copy}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') void copy(e)
+      }}
+      title={copied ? 'Copiado!' : `Clique para copiar: ${id}`}
+      className={`inline-flex max-w-full cursor-pointer items-center gap-1.5 rounded-md border border-[var(--color-brand-2)]/30 bg-[var(--color-brand-2)]/10 px-2 py-0.5 transition hover:border-[var(--color-brand-2)]/70 ${className}`}
     >
       <span className="text-[10px] font-bold tracking-wider text-[var(--color-brand-2)] uppercase">
         ID
       </span>
       <span className="truncate font-mono text-[11px] text-[var(--color-text)]">{id}</span>
+      {copied ? (
+        <Check size={11} className="shrink-0 text-[var(--color-ok)]" />
+      ) : (
+        <Copy size={11} className="shrink-0 text-[var(--color-muted)] opacity-60" />
+      )}
     </span>
   )
 }

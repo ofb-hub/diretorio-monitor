@@ -1,7 +1,8 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { DirectoryProvider, useDirectory } from './lib/DirectoryContext'
 import { Layout } from './components/Layout'
-import { ErrorState, Spinner } from './components/ui'
+import { ScrollToTop } from './components/ScrollToTop'
+import { ErrorState, ListSkeleton } from './components/ui'
 import { Dashboard } from './pages/Dashboard'
 import { Participants } from './pages/Participants'
 import { ParticipantDetail } from './pages/ParticipantDetail'
@@ -12,7 +13,7 @@ function AppContent() {
   const { loading, error, organisations, refresh } = useDirectory()
 
   if (loading && organisations.length === 0) {
-    return <Spinner label="Carregando diretório do Open Finance Brasil…" />
+    return <ListSkeleton />
   }
   if (error && organisations.length === 0) {
     return <ErrorState message={error} onRetry={refresh} />
@@ -39,6 +40,7 @@ function AppContent() {
 function App() {
   return (
     <DirectoryProvider>
+      <ScrollToTop />
       <Layout>
         <AppContent />
       </Layout>

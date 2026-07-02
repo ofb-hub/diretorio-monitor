@@ -119,8 +119,8 @@ export function Layout({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      {/* Conteúdo */}
-      <main className="flex-1 overflow-x-hidden px-8 py-6">{children}</main>
+      {/* Conteúdo — overflow-x-clip (e não hidden) para não quebrar position:sticky */}
+      <main className="flex-1 overflow-x-clip px-8 py-6">{children}</main>
     </div>
   )
 }

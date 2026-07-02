@@ -33,3 +33,10 @@ body {
   scrollbar-color: var(--color-border) transparent;
   scrollbar-width: thin;
 }
+
+/* Foco visível para navegação por teclado */
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}

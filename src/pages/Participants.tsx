@@ -1,33 +1,40 @@
-import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Search, ChevronRight } from 'lucide-react'
+import { useMemo } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { Search, ChevronRight, X } from 'lucide-react'
 import { useDirectory } from '../lib/DirectoryContext'
 import { formatCnpj, isActive, orgSegments, statusLabel } from '../lib/directory'
 import { Badge, Card, IdTag, PageHeader, SegmentBadges } from '../components/ui'
 
 export function Participants() {
   const { organisations } = useDirectory()
-  const [query, setQuery] = useState('')
-  // Filtros de segmento independentes (lógica "E" quando PF e PJ marcados).
-  // "Sem segmento" é exclusivo dos demais.
-  const [pf, setPf] = useState(false)
-  const [pj, setPj] = useState(false)
-  const [noSegment, setNoSegment] = useState(false)
+
+  // Busca e filtros vivem na URL (?q=...&pf=1&pj=1&sem=1):
+  // voltar do detalhe preserva o estado e a visão filtrada é compartilhável.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const query = searchParams.get('q') ?? ''
+  const pf = searchParams.get('pf') === '1'
+  const pj = searchParams.get('pj') === '1'
+  const noSegment = searchParams.get('sem') === '1'
+
+  const updateParams = (updates: Record<string, string | null>) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        for (const [k, v] of Object.entries(updates)) {
+          if (v === null || v === '') next.delete(k)
+          else next.set(k, v)
+        }
+        return next
+      },
+      { replace: true },
+    )
+  }
 
   // Handlers garantem exclusividade entre "Sem segmento" e PF/PJ.
-  const togglePf = () => {
-    setPf((v) => !v)
-    setNoSegment(false)
-  }
-  const togglePj = () => {
-    setPj((v) => !v)
-    setNoSegment(false)
-  }
-  const toggleNoSegment = () => {
-    setNoSegment((v) => !v)
-    setPf(false)
-    setPj(false)
-  }
+  const togglePf = () => updateParams({ pf: pf ? null : '1', sem: null })
+  const togglePj = () => updateParams({ pj: pj ? null : '1', sem: null })
+  const toggleNoSegment = () =>
+    updateParams({ sem: noSegment ? null : '1', pf: null, pj: null })
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -68,7 +75,8 @@ export function Participants() {
         subtitle={`${filtered.length} de ${organisations.length} organizações`}
       />
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+      {/* Barra de busca/filtros fixa ao rolar */}
+      <div className="sticky top-0 z-10 -mx-2 mb-4 flex flex-wrap items-center gap-3 bg-[var(--color-bg)]/95 px-2 py-3 backdrop-blur">
         <div className="relative flex-1 min-w-64">
           <Search
             size={16}
@@ -76,10 +84,20 @@ export function Participants() {
           />
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => updateParams({ q: e.target.value })}
             placeholder="Buscar por nome, CNPJ ou ID (org/server)…"
-            className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-2 pr-3 pl-9 text-sm outline-none focus:border-[var(--color-brand)]"
+            className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-2 pr-8 pl-9 text-sm outline-none focus:border-[var(--color-brand)]"
           />
+          {query && (
+            <button
+              onClick={() => updateParams({ q: null })}
+              aria-label="Limpar busca"
+              title="Limpar busca"
+              className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-0.5 text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
         <div className="flex gap-1">
           <FilterChip active={pf} onClick={togglePf}>
@@ -104,7 +122,7 @@ export function Participants() {
           const seg = orgSegments(org)
           return (
             <Link key={org.OrganisationId} to={`/participantes/${org.OrganisationId}`}>
-              <Card className="h-full p-4 transition hover:border-[var(--color-brand)]">
+              <Card className="h-full p-4 transition duration-150 hover:-translate-y-0.5 hover:border-[var(--color-brand)] hover:shadow-lg hover:shadow-black/20">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="truncate font-semibold" title={org.OrganisationName}>

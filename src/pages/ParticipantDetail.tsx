@@ -1,6 +1,14 @@
 import { useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, ExternalLink, MapPin, Building2, ChevronDown } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import {
+  ArrowLeft,
+  ExternalLink,
+  MapPin,
+  Building2,
+  ChevronDown,
+  ChevronsDownUp,
+  ChevronsUpDown,
+} from 'lucide-react'
 import { useDirectory } from '../lib/DirectoryContext'
 import {
   certHealth,
@@ -29,8 +37,17 @@ import type { ApiResource, AuthorisationServer, Organisation } from '../types'
 export function ParticipantDetail() {
   const { id } = useParams<{ id: string }>()
   const { organisations } = useDirectory()
+  const navigate = useNavigate()
   const org = organisations.find((o) => o.OrganisationId === id)
   const [groupBy, setGroupBy] = useState<GroupMode>('produto')
+  // Servers expandidos (estado no pai para suportar "expandir/recolher todos").
+  const [openIds, setOpenIds] = useState<Set<string>>(new Set())
+
+  // Volta preservando busca/filtros quando viemos da lista; senão, vai à lista.
+  const goBack = () => {
+    if ((window.history.state?.idx ?? 0) > 0) navigate(-1)
+    else navigate('/participantes')
+  }
 
   if (!org) {
     return (
@@ -50,12 +67,12 @@ export function ParticipantDetail() {
 
   return (
     <>
-      <Link
-        to="/participantes"
-        className="mb-4 inline-flex items-center gap-1 text-sm text-[var(--color-muted)] hover:text-[var(--color-text)]"
+      <button
+        onClick={goBack}
+        className="mb-4 inline-flex items-center gap-1 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
       >
         <ArrowLeft size={16} /> Participantes
-      </Link>
+      </button>
 
       <PageHeader title={org.OrganisationName} subtitle={org.LegalEntityName ?? undefined} />
 
@@ -113,37 +130,77 @@ export function ParticipantDetail() {
         <h2 className="font-semibold">
           Authorisation Servers ({(org.AuthorisationServers ?? []).length})
         </h2>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-[var(--color-muted)]">Agrupar APIs por</span>
-          <div className="flex gap-1">
-            {(
-              [
-                ['produto', 'Produto'],
-                ['fase', 'Fase'],
-                ['nenhum', 'Nenhum'],
-              ] as [GroupMode, string][]
-            ).map(([mode, label]) => (
-              <button
-                key={mode}
-                onClick={() => setGroupBy(mode)}
-                className={`rounded-lg border px-3 py-1.5 text-xs transition ${
-                  groupBy === mode
-                    ? 'border-[var(--color-brand)] bg-[var(--color-brand)]/15 text-[var(--color-brand)]'
-                    : 'border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-muted)] hover:text-[var(--color-text)]'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+        <div className="flex flex-wrap items-center gap-3">
+          <ExpandAllButton org={org} openIds={openIds} setOpenIds={setOpenIds} />
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-[var(--color-muted)]">Agrupar APIs por</span>
+            <div className="flex gap-1">
+              {(
+                [
+                  ['produto', 'Produto'],
+                  ['fase', 'Fase'],
+                  ['nenhum', 'Nenhum'],
+                ] as [GroupMode, string][]
+              ).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  onClick={() => setGroupBy(mode)}
+                  className={`rounded-lg border px-3 py-1.5 text-xs transition ${
+                    groupBy === mode
+                      ? 'border-[var(--color-brand)] bg-[var(--color-brand)]/15 text-[var(--color-brand)]'
+                      : 'border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-muted)] hover:text-[var(--color-text)]'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
       <div className="flex flex-col gap-3">
         {(org.AuthorisationServers ?? []).map((srv) => (
-          <ServerCard key={srv.AuthorisationServerId} org={org} srv={srv} groupBy={groupBy} />
+          <ServerCard
+            key={srv.AuthorisationServerId}
+            org={org}
+            srv={srv}
+            groupBy={groupBy}
+            open={openIds.has(srv.AuthorisationServerId)}
+            onToggle={() =>
+              setOpenIds((prev) => {
+                const next = new Set(prev)
+                if (next.has(srv.AuthorisationServerId)) next.delete(srv.AuthorisationServerId)
+                else next.add(srv.AuthorisationServerId)
+                return next
+              })
+            }
+          />
         ))}
       </div>
     </>
+  )
+}
+
+function ExpandAllButton({
+  org,
+  openIds,
+  setOpenIds,
+}: {
+  org: Organisation
+  openIds: Set<string>
+  setOpenIds: (ids: Set<string>) => void
+}) {
+  const allIds = (org.AuthorisationServers ?? []).map((s) => s.AuthorisationServerId)
+  const allOpen = allIds.length > 0 && allIds.every((id) => openIds.has(id))
+
+  return (
+    <button
+      onClick={() => setOpenIds(allOpen ? new Set() : new Set(allIds))}
+      className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs text-[var(--color-muted)] transition hover:border-[var(--color-brand)] hover:text-[var(--color-text)]"
+    >
+      {allOpen ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
+      {allOpen ? 'Recolher todos' : 'Expandir todos'}
+    </button>
   )
 }
 
@@ -180,12 +237,15 @@ function ServerCard({
   org,
   srv,
   groupBy,
+  open,
+  onToggle,
 }: {
   org: Organisation
   srv: AuthorisationServer
   groupBy: GroupMode
+  open: boolean
+  onToggle: () => void
 }) {
-  const [open, setOpen] = useState(false)
   const apis = srv.ApiResources ?? []
   const certs = srv.AuthorisationServerCertifications ?? []
   const seg = serverSegments(srv)
@@ -195,7 +255,7 @@ function ServerCard({
   return (
     <Card className="overflow-hidden">
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={onToggle}
         className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[var(--color-surface-2)]"
       >
         {srv.CustomerFriendlyLogoUri ? (
