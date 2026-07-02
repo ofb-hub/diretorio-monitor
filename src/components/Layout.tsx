@@ -1,6 +1,12 @@
 import { NavLink } from 'react-router-dom'
-import { Building2, RefreshCw, Landmark } from 'lucide-react'
-import type { ReactNode } from 'react'
+import {
+  Building2,
+  RefreshCw,
+  Landmark,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from 'lucide-react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useDirectory } from '../lib/DirectoryContext'
 import { formatDateTime } from '../lib/directory'
 
@@ -14,21 +20,52 @@ const nav = [
   // { to: '/certificacoes', label: 'Certificações', icon: ShieldCheck },
 ]
 
+const COLLAPSE_KEY = 'ofbr-sidebar-collapsed'
+
 export function Layout({ children }: { children: ReactNode }) {
   const { fetchedAt, fromCache, loading, refresh, organisations } = useDirectory()
+  const [collapsed, setCollapsed] = useState(
+    () => localStorage.getItem(COLLAPSE_KEY) === '1',
+  )
+
+  useEffect(() => {
+    localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0')
+  }, [collapsed])
 
   return (
     <div className="flex min-h-screen">
       {/* Sidebar */}
-      <aside className="flex w-60 shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)]">
-        <div className="flex items-center gap-2 px-5 py-5">
-          <Landmark className="text-[var(--color-brand)]" size={26} />
-          <div className="leading-tight">
-            <div className="font-bold">Open Finance BR</div>
-            <div className="text-xs text-[var(--color-muted)]">
-              Diretório · Monitoramento
+      <aside
+        className={`flex shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)] transition-all duration-200 ${
+          collapsed ? 'w-16' : 'w-60'
+        }`}
+      >
+        {/* Cabeçalho + toggle */}
+        <div
+          className={`flex items-center py-5 ${
+            collapsed ? 'justify-center px-0' : 'gap-2 px-5'
+          }`}
+        >
+          <Landmark className="shrink-0 text-[var(--color-brand)]" size={26} />
+          {!collapsed && (
+            <div className="min-w-0 leading-tight">
+              <div className="truncate font-bold">Open Finance BR</div>
+              <div className="truncate text-xs text-[var(--color-muted)]">
+                Diretório · Monitoramento
+              </div>
             </div>
-          </div>
+          )}
+        </div>
+
+        <div className={`mb-2 flex ${collapsed ? 'justify-center' : 'justify-end px-3'}`}>
+          <button
+            onClick={() => setCollapsed((v) => !v)}
+            title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+            aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-muted)] transition hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)]"
+          >
+            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
         </div>
 
         <nav className="flex flex-col gap-1 px-3">
@@ -37,25 +74,32 @@ export function Layout({ children }: { children: ReactNode }) {
               key={to}
               to={to}
               end={end}
+              title={collapsed ? label : undefined}
               className={({ isActive }) =>
-                `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
+                `flex items-center gap-3 rounded-lg py-2 text-sm transition ${
+                  collapsed ? 'justify-center px-0' : 'px-3'
+                } ${
                   isActive
                     ? 'bg-[var(--color-brand)]/15 text-[var(--color-brand)]'
                     : 'text-[var(--color-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)]'
                 }`
               }
             >
-              <Icon size={18} />
-              {label}
+              <Icon size={18} className="shrink-0" />
+              {!collapsed && label}
             </NavLink>
           ))}
         </nav>
 
-        <div className="mt-auto px-4 py-4 text-xs text-[var(--color-muted)]">
-          {organisations.length > 0 && (
+        <div
+          className={`mt-auto py-4 text-xs text-[var(--color-muted)] ${
+            collapsed ? 'px-2' : 'px-4'
+          }`}
+        >
+          {!collapsed && organisations.length > 0 && (
             <div className="mb-1">{organisations.length} organizações</div>
           )}
-          {fetchedAt && (
+          {!collapsed && fetchedAt && (
             <div className="mb-2">
               Atualizado: {formatDateTime(fetchedAt)}
               {fromCache && ' (cache)'}
@@ -64,10 +108,13 @@ export function Layout({ children }: { children: ReactNode }) {
           <button
             onClick={refresh}
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 hover:border-[var(--color-brand)] disabled:opacity-50"
+            title="Atualizar dados"
+            className={`flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] py-2 hover:border-[var(--color-brand)] disabled:opacity-50 ${
+              collapsed ? 'px-0' : 'px-3'
+            }`}
           >
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            Atualizar dados
+            {!collapsed && 'Atualizar dados'}
           </button>
         </div>
       </aside>
