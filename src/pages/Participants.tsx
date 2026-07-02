@@ -45,9 +45,10 @@ export function Participants() {
           const seg = orgSegments(org)
           if (seg.pf || seg.pj) return false
         } else if (pf || pj) {
+          // Correspondência exata: a seleção define exatamente quais segmentos
+          // a org deve ter. PF só -> PF e não PJ; ambos -> exatamente os dois.
           const seg = orgSegments(org)
-          if (pf && !seg.pf) return false
-          if (pj && !seg.pj) return false
+          if (seg.pf !== pf || seg.pj !== pj) return false
         }
         if (!q) return true
         const nameHit =
