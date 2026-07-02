@@ -63,7 +63,12 @@ export function Participants() {
           (org.AuthorisationServers ?? []).some((s) =>
             s.AuthorisationServerId.toLowerCase().includes(q),
           )
-        return nameHit || cnpjHit || idHit
+        // Busca transitiva por marca: o nome de um Authorisation Server
+        // (ex.: "BV") encontra a organização dona dele.
+        const brandHit = (org.AuthorisationServers ?? []).some((s) =>
+          (s.CustomerFriendlyName ?? '').toLowerCase().includes(q),
+        )
+        return nameHit || cnpjHit || idHit || brandHit
       })
       .sort((a, b) => a.OrganisationName.localeCompare(b.OrganisationName))
   }, [organisations, query, pf, pj, noSegment])
@@ -85,7 +90,7 @@ export function Participants() {
           <input
             value={query}
             onChange={(e) => updateParams({ q: e.target.value })}
-            placeholder="Buscar por nome, CNPJ ou ID (org/server)…"
+            placeholder="Buscar por nome, marca, CNPJ ou ID (org/server)…"
             className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-2 pr-8 pl-9 text-sm outline-none focus:border-[var(--color-brand)]"
           />
           {query && (
@@ -120,6 +125,22 @@ export function Participants() {
             0,
           )
           const seg = orgSegments(org)
+          // Se o match veio de uma marca (e não do nome da org), mostra qual —
+          // senão a org aparece na busca sem motivo visível.
+          const q = query.trim().toLowerCase()
+          const nameMatched =
+            !q ||
+            org.OrganisationName.toLowerCase().includes(q) ||
+            (org.LegalEntityName ?? '').toLowerCase().includes(q)
+          const matchedBrands = nameMatched
+            ? []
+            : [
+                ...new Set(
+                  (org.AuthorisationServers ?? [])
+                    .map((s) => s.CustomerFriendlyName)
+                    .filter((n): n is string => !!n && n.toLowerCase().includes(q)),
+                ),
+              ]
           return (
             <Link key={org.OrganisationId} to={`/participantes/${org.OrganisationId}`}>
               <Card className="h-full p-4 transition duration-150 hover:-translate-y-0.5 hover:border-[var(--color-brand)] hover:shadow-lg hover:shadow-black/20">
@@ -143,6 +164,17 @@ export function Participants() {
                   </Badge>
                   <SegmentBadges pf={seg.pf} pj={seg.pj} emptyLabel={null} />
                 </div>
+                {matchedBrands.length > 0 && (
+                  <div className="mt-2 flex flex-wrap items-center gap-1 text-[11px] text-[var(--color-muted)]">
+                    <span>Marca:</span>
+                    {matchedBrands.slice(0, 3).map((b) => (
+                      <Badge key={b} tone="info">
+                        {b}
+                      </Badge>
+                    ))}
+                    {matchedBrands.length > 3 && <span>+{matchedBrands.length - 3}</span>}
+                  </div>
+                )}
                 <div className="mt-3 flex gap-4 text-xs text-[var(--color-muted)]">
                   <span>{serverCount} servers</span>
                   <span>{apiCount} APIs</span>
