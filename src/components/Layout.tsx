@@ -49,9 +49,9 @@ export function Layout({ children }: { children: ReactNode }) {
           <Landmark className="shrink-0 text-[var(--color-brand)]" size={26} />
           {!collapsed && (
             <div className="min-w-0 leading-tight">
-              <div className="truncate font-bold">Open Finance BR</div>
+              <div className="truncate font-bold">OpenX</div>
               <div className="truncate text-xs text-[var(--color-muted)]">
-                Diretório · Monitoramento
+                Mirror Directory
               </div>
             </div>
           )}
