@@ -7,13 +7,30 @@ import { Badge, Card, PageHeader, SegmentBadges } from '../components/ui'
 
 const ALL_ROLES = ['CONTA', 'DADOS', 'PAGTO', 'CCORR']
 
-type SegFilter = '' | 'pf' | 'pj' | 'none'
-
 export function Participants() {
   const { organisations } = useDirectory()
   const [query, setQuery] = useState('')
   const [role, setRole] = useState<string>('')
-  const [segment, setSegment] = useState<SegFilter>('')
+  // Filtros de segmento independentes (lógica "E" quando PF e PJ marcados).
+  // "Sem segmento" é exclusivo dos demais.
+  const [pf, setPf] = useState(false)
+  const [pj, setPj] = useState(false)
+  const [noSegment, setNoSegment] = useState(false)
+
+  // Handlers garantem exclusividade entre "Sem segmento" e PF/PJ.
+  const togglePf = () => {
+    setPf((v) => !v)
+    setNoSegment(false)
+  }
+  const togglePj = () => {
+    setPj((v) => !v)
+    setNoSegment(false)
+  }
+  const toggleNoSegment = () => {
+    setNoSegment((v) => !v)
+    setPf(false)
+    setPj(false)
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -24,11 +41,13 @@ export function Participants() {
           const roles = (org.OrgDomainRoleClaims ?? []).map((r) => r.Role)
           if (!roles.includes(role)) return false
         }
-        if (segment) {
+        if (noSegment) {
           const seg = orgSegments(org)
-          if (segment === 'pf' && !seg.pf) return false
-          if (segment === 'pj' && !seg.pj) return false
-          if (segment === 'none' && (seg.pf || seg.pj)) return false
+          if (seg.pf || seg.pj) return false
+        } else if (pf || pj) {
+          const seg = orgSegments(org)
+          if (pf && !seg.pf) return false
+          if (pj && !seg.pj) return false
         }
         if (!q) return true
         const nameHit =
@@ -46,7 +65,7 @@ export function Participants() {
         return nameHit || cnpjHit || idHit
       })
       .sort((a, b) => a.OrganisationName.localeCompare(b.OrganisationName))
-  }, [organisations, query, role, segment])
+  }, [organisations, query, role, pf, pj, noSegment])
 
   return (
     <>
@@ -79,16 +98,13 @@ export function Participants() {
           ))}
         </div>
         <div className="flex gap-1">
-          <FilterChip active={segment === 'pf'} onClick={() => setSegment(segment === 'pf' ? '' : 'pf')}>
+          <FilterChip active={pf} onClick={togglePf}>
             PF
           </FilterChip>
-          <FilterChip active={segment === 'pj'} onClick={() => setSegment(segment === 'pj' ? '' : 'pj')}>
+          <FilterChip active={pj} onClick={togglePj}>
             PJ
           </FilterChip>
-          <FilterChip
-            active={segment === 'none'}
-            onClick={() => setSegment(segment === 'none' ? '' : 'none')}
-          >
+          <FilterChip active={noSegment} onClick={toggleNoSegment}>
             Sem segmento
           </FilterChip>
         </div>
