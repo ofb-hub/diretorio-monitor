@@ -5,12 +5,9 @@ import { useDirectory } from '../lib/DirectoryContext'
 import { formatCnpj, isActive, orgSegments, statusLabel } from '../lib/directory'
 import { Badge, Card, IdTag, PageHeader, SegmentBadges } from '../components/ui'
 
-const ALL_ROLES = ['CONTA', 'DADOS', 'PAGTO', 'CCORR']
-
 export function Participants() {
   const { organisations } = useDirectory()
   const [query, setQuery] = useState('')
-  const [role, setRole] = useState<string>('')
   // Filtros de segmento independentes (lógica "E" quando PF e PJ marcados).
   // "Sem segmento" é exclusivo dos demais.
   const [pf, setPf] = useState(false)
@@ -37,10 +34,6 @@ export function Participants() {
     const qDigits = q.replace(/\D/g, '')
     return organisations
       .filter((org) => {
-        if (role) {
-          const roles = (org.OrgDomainRoleClaims ?? []).map((r) => r.Role)
-          if (!roles.includes(role)) return false
-        }
         if (noSegment) {
           const seg = orgSegments(org)
           if (seg.pf || seg.pj) return false
@@ -66,7 +59,7 @@ export function Participants() {
         return nameHit || cnpjHit || idHit
       })
       .sort((a, b) => a.OrganisationName.localeCompare(b.OrganisationName))
-  }, [organisations, query, role, pf, pj, noSegment])
+  }, [organisations, query, pf, pj, noSegment])
 
   return (
     <>
@@ -87,16 +80,6 @@ export function Participants() {
             placeholder="Buscar por nome, CNPJ ou ID (org/server)…"
             className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-2 pr-3 pl-9 text-sm outline-none focus:border-[var(--color-brand)]"
           />
-        </div>
-        <div className="flex gap-1">
-          <FilterChip active={role === ''} onClick={() => setRole('')}>
-            Todas
-          </FilterChip>
-          {ALL_ROLES.map((r) => (
-            <FilterChip key={r} active={role === r} onClick={() => setRole(r)}>
-              {r}
-            </FilterChip>
-          ))}
         </div>
         <div className="flex gap-1">
           <FilterChip active={pf} onClick={togglePf}>
