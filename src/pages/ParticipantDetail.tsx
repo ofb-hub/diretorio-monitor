@@ -82,7 +82,7 @@ export function ParticipantDetail() {
             <Building2 size={18} /> Dados cadastrais
           </h2>
           <InfoRow label="CNPJ" value={formatCnpj(org.RegistrationNumber)} />
-          <InfoRow label="Status" value={org.Status} />
+          <InfoRow label="Status" value={statusLabel(org.Status)} />
           <InfoRow label="País" value={org.CountryOfRegistration ?? '—'} />
           <InfoRow label="Registro" value={org.RegistrationId ?? '—'} />
           {(org.AddressLine1 || org.City) && (
@@ -250,14 +250,24 @@ function ServerCard({
   const certs = srv.AuthorisationServerCertifications ?? []
   const seg = serverSegments(srv)
   const lifecycle = serverLifecycle(srv)
-  const groups = useMemo(() => groupApis(apis, groupBy), [apis, groupBy])
+  const groups = useMemo(
+    () => groupApis(srv.ApiResources ?? [], groupBy),
+    [srv.ApiResources, groupBy],
+  )
+  const name = serverLabel(org, srv.CustomerFriendlyName)
 
   return (
     <Card className="overflow-hidden">
-      <button
-        onClick={onToggle}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[var(--color-surface-2)]"
-      >
+      {/* Cabeçalho: botão esticado (expande/recolhe) por baixo; IdTag e badges
+          ficam por cima para o IdTag copiar e os badges mostrarem o title. */}
+      <div className="relative flex w-full flex-wrap items-center gap-3 px-4 py-3 text-left hover:bg-[var(--color-surface-2)]">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          aria-label={`${name} — ${open ? 'recolher' : 'expandir'} detalhes`}
+          className="absolute inset-0"
+        />
         {srv.CustomerFriendlyLogoUri ? (
           <img
             src={srv.CustomerFriendlyLogoUri}
@@ -269,7 +279,7 @@ function ServerCard({
           <div className="h-8 w-8 rounded bg-[var(--color-surface-2)]" />
         )}
         <div className="min-w-0 flex-1">
-          <div className="truncate font-medium">{serverLabel(org, srv.CustomerFriendlyName)}</div>
+          <div className="truncate font-medium">{name}</div>
           <div className="truncate text-xs text-[var(--color-muted)]">
             {srv.Issuer ?? 'sem issuer'}
           </div>
@@ -277,7 +287,10 @@ function ServerCard({
             <IdTag id={srv.AuthorisationServerId} />
           </div>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div
+          onClick={onToggle}
+          className="relative z-10 flex basis-full cursor-pointer flex-wrap items-center gap-2 sm:basis-auto sm:justify-end"
+        >
           <Badge
             tone={isActive(srv.Status) ? 'ok' : 'neutral'}
             title={`Status no diretório: ${statusLabel(srv.Status)}`}
@@ -299,7 +312,7 @@ function ServerCard({
             className={`text-[var(--color-muted)] transition ${open ? 'rotate-180' : ''}`}
           />
         </div>
-      </button>
+      </div>
 
       {open && (
         <div className="border-t border-[var(--color-border)] px-4 py-4">

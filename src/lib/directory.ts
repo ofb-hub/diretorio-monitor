@@ -7,35 +7,16 @@ import type {
   DirectoryStats,
   Organisation,
 } from '../types'
+import { readSnapshot, writeSnapshot } from './snapshotCache'
 
 export const DIRECTORY_URL =
   'https://data.directory.openbankingbrasil.org.br/participants'
 
-const CACHE_KEY = 'ofbr-directory-snapshot-v1'
-// Servidor entrega Cache-Control max-age=900 (15 min). Espelhamos localmente.
-const CACHE_TTL_MS = 15 * 60 * 1000
+// Servidor entrega Cache-Control max-age=900 (15 min). Espelhamos localmente,
+// e é também o intervalo da atualização automática (DirectoryContext).
+export const CACHE_TTL_MS = 15 * 60 * 1000
 
 const EXPIRING_WINDOW_DAYS = 90
-
-// ---- Cache em localStorage ----
-
-function readCache(): DirectorySnapshot | null {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY)
-    if (!raw) return null
-    return JSON.parse(raw) as DirectorySnapshot
-  } catch {
-    return null
-  }
-}
-
-function writeCache(snap: DirectorySnapshot) {
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(snap))
-  } catch {
-    // storage cheio ou indisponível — ignora, seguimos em memória
-  }
-}
 
 export interface FetchResult {
   snapshot: DirectorySnapshot
@@ -47,7 +28,7 @@ export interface FetchResult {
  * `force` ignora o cache e vai à rede.
  */
 export async function fetchDirectory(force = false): Promise<FetchResult> {
-  const cached = readCache()
+  const cached = await readSnapshot()
   const fresh = cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS
 
   if (!force && fresh && cached) {
@@ -55,11 +36,18 @@ export async function fetchDirectory(force = false): Promise<FetchResult> {
   }
 
   try {
-    const res = await fetch(DIRECTORY_URL, { headers: { Accept: 'application/json' } })
+    const res = await fetch(DIRECTORY_URL, {
+      headers: { Accept: 'application/json' },
+      // Sem isso, "Atualizar dados" recebia a cópia do cache HTTP do navegador
+      // (max-age=900) em vez de ir de fato ao servidor.
+      cache: force ? 'no-cache' : 'default',
+    })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const organisations = (await res.json()) as Organisation[]
+    const data: unknown = await res.json()
+    if (!Array.isArray(data)) throw new Error('Resposta inesperada do diretório')
+    const organisations = data as Organisation[]
     const snapshot: DirectorySnapshot = { organisations, fetchedAt: Date.now() }
-    writeCache(snapshot)
+    void writeSnapshot(snapshot)
     return { snapshot, fromCache: false }
   } catch (err) {
     // Rede falhou: se temos qualquer cache (mesmo velho), usamos como fallback.

@@ -125,7 +125,8 @@ function openDataProduct(family: string): ProductKey {
 }
 
 export function classifyFamily(family: string): FamilyClass {
-  if (family in EXPLICIT) return EXPLICIT[family]
+  // hasOwn (e não `in`): "constructor"/"toString" não podem casar com o protótipo.
+  if (Object.hasOwn(EXPLICIT, family)) return EXPLICIT[family]
   if (family.startsWith('opendata-'))
     return { phase: 'fase1', product: openDataProduct(family) }
   if (family.startsWith('channels_'))

@@ -29,6 +29,10 @@ jobs:
 
       - run: npm ci
 
+      - run: npm run lint
+
+      - run: npm test
+
       - run: npm run build
 
       # SPA fallback: GitHub Pages serve 404.html preservando a URL,
