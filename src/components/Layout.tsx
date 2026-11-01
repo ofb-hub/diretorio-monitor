@@ -1,7 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   Building2,
-  Landmark,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
@@ -14,6 +13,7 @@ import { formatDateTime } from '../lib/directory'
 import { safeGetItem, safeSetItem } from '../lib/storage'
 import { modKeyLabel, openCommandMenu } from '../lib/commandMenu'
 import { CommandMenu } from './CommandMenu'
+import { Logo } from './Logo'
 import { Button } from '@/components/ui/button'
 import { Kbd } from '@/components/ui/kbd'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
@@ -49,17 +49,9 @@ function useIsDesktop(): boolean {
 
 function Brand({ compact = false }: { compact?: boolean }) {
   return (
-    <div className={cn('flex items-center gap-2', compact && 'justify-center')}>
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
-        <Landmark className="size-4.5" />
-      </div>
-      {!compact && (
-        <div className="min-w-0 leading-tight">
-          <div className="truncate font-heading font-semibold">OpenX</div>
-          <div className="truncate text-xs text-muted-foreground">Mirror Directory</div>
-        </div>
-      )}
-    </div>
+    <NavLink to="/participantes" aria-label="OpenMirror — início" className="rounded-lg">
+      <Logo compact={compact} />
+    </NavLink>
   )
 }
 

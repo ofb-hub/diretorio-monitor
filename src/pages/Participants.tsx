@@ -4,7 +4,14 @@ import { Search, ChevronRight, X, Server, Boxes } from 'lucide-react'
 import { useDirectory } from '../lib/DirectoryContext'
 import { formatCnpj, isActive, orgSegments, statusLabel } from '../lib/directory'
 import { matchOrganisation } from '../lib/search'
-import { Badge, IdTag, PageHeader, SegmentBadges } from '../components/shared'
+import {
+  Badge,
+  IdTag,
+  LiveBadge,
+  PageHeader,
+  SegmentBadges,
+  StatPill,
+} from '../components/shared'
 import {
   InputGroup,
   InputGroupAddon,
@@ -62,6 +69,19 @@ export function Participants() {
     })
   }
 
+  // Totais do ecossistema para o cabeçalho (não dependem dos filtros).
+  const totals = useMemo(() => {
+    let servers = 0
+    let apis = 0
+    for (const org of organisations) {
+      for (const s of org.AuthorisationServers ?? []) {
+        servers++
+        apis += (s.ApiResources ?? []).length
+      }
+    }
+    return { servers, apis }
+  }, [organisations])
+
   const filtered = useMemo(() => {
     return organisations
       .filter((org) => {
@@ -85,8 +105,15 @@ export function Participants() {
   return (
     <>
       <PageHeader
+        eyebrow={<LiveBadge />}
         title="Participantes"
         subtitle={`${filtered.length} de ${organisations.length} organizações`}
+        actions={
+          <div className="flex gap-2">
+            <StatPill value={totals.servers} label="Authorisation Servers" />
+            <StatPill value={totals.apis} label="APIs declaradas" />
+          </div>
+        }
       />
 
       {/* Barra de busca/filtros fixa ao rolar */}
