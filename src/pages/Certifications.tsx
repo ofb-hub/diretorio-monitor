@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import { useDirectory } from '../lib/DirectoryContext'
 import { flattenCerts } from '../lib/directory'
-import { Card, CertHealthBadge, PageHeader } from '../components/ui'
+import { Card, CertHealthBadge, PageHeader } from '../components/shared'
 import type { CertHealth } from '../types'
 
 const FILTERS: { key: CertHealth | 'all'; label: string }[] = [
@@ -62,13 +62,13 @@ export function Certifications() {
         <div className="relative flex-1 min-w-64">
           <Search
             size={16}
-            className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-muted)]"
+            className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
           />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar por organização, server ou perfil…"
-            className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-2 pr-3 pl-9 text-sm outline-none focus:border-[var(--color-brand)]"
+            className="w-full rounded-lg border border-border bg-card py-2 pr-3 pl-9 text-sm outline-none focus:border-primary"
           />
         </div>
         <div className="flex gap-1">
@@ -78,8 +78,8 @@ export function Certifications() {
               onClick={() => setFilter(f.key)}
               className={`rounded-lg border px-3 py-2 text-sm transition ${
                 filter === f.key
-                  ? 'border-[var(--color-brand)] bg-[var(--color-brand)]/15 text-[var(--color-brand)]'
-                  : 'border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-muted)] hover:text-[var(--color-text)]'
+                  ? 'border-primary bg-primary/15 text-primary'
+                  : 'border-border bg-card text-muted-foreground hover:text-foreground'
               }`}
             >
               {f.label}
@@ -91,7 +91,7 @@ export function Certifications() {
       <Card className="overflow-hidden">
         <div className="max-h-[65vh] overflow-auto">
           <table className="w-full border-collapse text-sm">
-            <thead className="sticky top-0 bg-[var(--color-surface-2)] text-left text-xs text-[var(--color-muted)]">
+            <thead className="sticky top-0 bg-secondary text-left text-xs text-muted-foreground">
               <tr>
                 <th className="px-4 py-2 font-medium">Status</th>
                 <th className="px-4 py-2 font-medium">Organização</th>
@@ -105,7 +105,7 @@ export function Certifications() {
               {filtered.map((r) => (
                 <tr
                   key={r.certificationId}
-                  className="border-t border-[var(--color-border)] hover:bg-[var(--color-surface-2)]"
+                  className="border-t border-border hover:bg-secondary"
                 >
                   <td className="px-4 py-2">
                     <CertHealthBadge health={r.health} days={r.daysToExpire} />
@@ -113,16 +113,16 @@ export function Certifications() {
                   <td className="px-4 py-2">
                     <Link
                       to={`/participantes/${r.organisationId}`}
-                      className="text-[var(--color-brand-2)] hover:underline"
+                      className="text-info hover:underline"
                     >
                       {r.organisationName}
                     </Link>
                   </td>
-                  <td className="px-4 py-2 text-[var(--color-muted)]">{r.serverName}</td>
-                  <td className="px-4 py-2 text-[var(--color-muted)]">
+                  <td className="px-4 py-2 text-muted-foreground">{r.serverName}</td>
+                  <td className="px-4 py-2 text-muted-foreground">
                     {r.profileVariant ?? r.profileType ?? '—'}
                   </td>
-                  <td className="px-4 py-2 text-[var(--color-muted)]">{r.startDate ?? '—'}</td>
+                  <td className="px-4 py-2 text-muted-foreground">{r.startDate ?? '—'}</td>
                   <td className="px-4 py-2">{r.expirationDate ?? '—'}</td>
                 </tr>
               ))}
@@ -130,7 +130,7 @@ export function Certifications() {
           </table>
         </div>
       </Card>
-      <div className="mt-2 text-xs text-[var(--color-muted)]">
+      <div className="mt-2 text-xs text-muted-foreground">
         {filtered.length.toLocaleString('pt-BR')} certificações
       </div>
     </>
@@ -147,15 +147,15 @@ function SummaryTile({
   tone: 'ok' | 'warn' | 'danger' | 'neutral'
 }) {
   const color: Record<string, string> = {
-    ok: 'text-[var(--color-ok)]',
-    warn: 'text-[var(--color-warn)]',
-    danger: 'text-[var(--color-danger)]',
-    neutral: 'text-[var(--color-text)]',
+    ok: 'text-ok',
+    warn: 'text-warn',
+    danger: 'text-destructive',
+    neutral: 'text-foreground',
   }
   return (
     <Card className="p-4">
       <div className={`text-3xl font-bold ${color[tone]}`}>{value.toLocaleString('pt-BR')}</div>
-      <div className="mt-1 text-xs text-[var(--color-muted)]">{label}</div>
+      <div className="mt-1 text-xs text-muted-foreground">{label}</div>
     </Card>
   )
 }

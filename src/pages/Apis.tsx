@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import { useDirectory } from '../lib/DirectoryContext'
 import { flattenApis, prettyFamily } from '../lib/directory'
-import { Badge, Card, PageHeader } from '../components/ui'
+import { Badge, Card, PageHeader } from '../components/shared'
 
 export function Apis() {
   const { organisations } = useDirectory()
@@ -43,19 +43,19 @@ export function Apis() {
         <div className="relative flex-1 min-w-64">
           <Search
             size={16}
-            className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-muted)]"
+            className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
           />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar por organização, server ou família…"
-            className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-2 pr-3 pl-9 text-sm outline-none focus:border-[var(--color-brand)]"
+            className="w-full rounded-lg border border-border bg-card py-2 pr-3 pl-9 text-sm outline-none focus:border-primary"
           />
         </div>
         <select
           value={family}
           onChange={(e) => setFamily(e.target.value)}
-          className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm outline-none focus:border-[var(--color-brand)]"
+          className="rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary"
         >
           <option value="">Todas as famílias</option>
           {families.map(([f, n]) => (
@@ -69,7 +69,7 @@ export function Apis() {
       <Card className="overflow-hidden">
         <div className="max-h-[70vh] overflow-auto">
           <table className="w-full border-collapse text-sm">
-            <thead className="sticky top-0 bg-[var(--color-surface-2)] text-left text-xs text-[var(--color-muted)]">
+            <thead className="sticky top-0 bg-secondary text-left text-xs text-muted-foreground">
               <tr>
                 <Th>Família</Th>
                 <Th>Organização</Th>
@@ -83,7 +83,7 @@ export function Apis() {
               {filtered.map((r) => (
                 <tr
                   key={r.apiResourceId}
-                  className="border-t border-[var(--color-border)] hover:bg-[var(--color-surface-2)]"
+                  className="border-t border-border hover:bg-secondary"
                 >
                   <Td>
                     <span className="font-medium">{prettyFamily(r.familyType)}</span>
@@ -91,16 +91,16 @@ export function Apis() {
                   <Td>
                     <Link
                       to={`/participantes/${r.organisationId}`}
-                      className="text-[var(--color-brand-2)] hover:underline"
+                      className="text-info hover:underline"
                     >
                       {r.organisationName}
                     </Link>
                   </Td>
-                  <Td className="text-[var(--color-muted)]">{r.serverName}</Td>
+                  <Td className="text-muted-foreground">{r.serverName}</Td>
                   <Td>
                     <Badge tone={r.status === 'Active' ? 'ok' : 'neutral'}>v{r.version}</Badge>
                   </Td>
-                  <Td className="text-[var(--color-muted)]">{r.certificationStatus ?? '—'}</Td>
+                  <Td className="text-muted-foreground">{r.certificationStatus ?? '—'}</Td>
                   <Td>{r.endpointCount}</Td>
                 </tr>
               ))}
@@ -109,7 +109,7 @@ export function Apis() {
         </div>
       </Card>
       {filtered.length >= 500 && (
-        <div className="mt-2 text-center text-xs text-[var(--color-muted)]">
+        <div className="mt-2 text-center text-xs text-muted-foreground">
           Mostrando as primeiras 500 linhas — refine a busca para ver mais.
         </div>
       )}

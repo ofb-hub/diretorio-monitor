@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
   ExternalLink,
@@ -8,6 +8,9 @@ import {
   ChevronDown,
   ChevronsDownUp,
   ChevronsUpDown,
+  Server,
+  Boxes,
+  Radar,
 } from 'lucide-react'
 import { useDirectory } from '../lib/DirectoryContext'
 import {
@@ -24,15 +27,26 @@ import {
 } from '../lib/directory'
 import {
   Badge,
-  Card,
   CertHealthBadge,
   CopyableId,
   IdTag,
   PageHeader,
   SegmentBadges,
-} from '../components/ui'
+} from '../components/shared'
 import { groupApis, type GroupMode } from '../lib/taxonomy'
 import type { ApiResource, AuthorisationServer, Organisation } from '../types'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Separator } from '@/components/ui/separator'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { NumberTicker } from '@/components/ui/number-ticker'
+import { BorderBeam } from '@/components/ui/border-beam'
+import { cn } from '@/lib/utils'
+
+// Animação de abrir/fechar dos Collapsibles (keyframes do tw-animate-css).
+const collapseAnim =
+  'overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down'
 
 export function ParticipantDetail() {
   const { id } = useParams<{ id: string }>()
@@ -43,17 +57,21 @@ export function ParticipantDetail() {
   // Servers expandidos (estado no pai para suportar "expandir/recolher todos").
   const [openIds, setOpenIds] = useState<Set<string>>(new Set())
 
-  // Volta preservando busca/filtros quando viemos da lista; senão, vai à lista.
+  const location = useLocation()
+
+  // "Voltar" sempre leva à lista de Participantes. Se viemos de um card da
+  // lista, volta no histórico (preserva busca e filtros); se viemos da busca
+  // rápida, da Vitrine ou de um link direto, abre a lista do zero.
   const goBack = () => {
-    if ((window.history.state?.idx ?? 0) > 0) navigate(-1)
+    if ((location.state as { fromList?: boolean } | null)?.fromList) navigate(-1)
     else navigate('/participantes')
   }
 
   if (!org) {
     return (
-      <div className="py-16 text-center text-[var(--color-muted)]">
+      <div className="py-16 text-center text-muted-foreground">
         Organização não encontrada.{' '}
-        <Link to="/participantes" className="text-[var(--color-brand)]">
+        <Link to="/participantes" className="text-primary">
           Voltar
         </Link>
       </div>
@@ -64,40 +82,42 @@ export function ParticipantDetail() {
     ...new Set((org.OrgDomainRoleClaims ?? []).map((r) => r.Role).filter(Boolean)),
   ] as string[]
   const seg = orgSegments(org)
+  const servers = org.AuthorisationServers ?? []
 
   return (
     <>
-      <button
-        onClick={goBack}
-        className="mb-4 inline-flex items-center gap-1 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
-      >
-        <ArrowLeft size={16} /> Participantes
-      </button>
+      <Button variant="ghost" size="sm" onClick={goBack} className="mb-3 -ml-2 text-muted-foreground">
+        <ArrowLeft /> Participantes
+      </Button>
 
       <PageHeader title={org.OrganisationName} subtitle={org.LegalEntityName ?? undefined} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="p-5 lg:col-span-1">
-          <h2 className="mb-3 flex items-center gap-2 font-semibold">
-            <Building2 size={18} /> Dados cadastrais
-          </h2>
-          <InfoRow label="CNPJ" value={formatCnpj(org.RegistrationNumber)} />
-          <InfoRow label="Status" value={statusLabel(org.Status)} />
-          <InfoRow label="País" value={org.CountryOfRegistration ?? '—'} />
-          <InfoRow label="Registro" value={org.RegistrationId ?? '—'} />
-          {(org.AddressLine1 || org.City) && (
-            <div className="mt-3 flex items-start gap-2 text-sm text-[var(--color-muted)]">
-              <MapPin size={16} className="mt-0.5 shrink-0" />
-              <span>
-                {[org.AddressLine1, org.AddressLine2, org.City, org.Postcode]
-                  .filter(Boolean)
-                  .join(', ')}
-              </span>
-            </div>
-          )}
-          <div className="mt-4">
-            <div className="mb-1 text-xs text-[var(--color-muted)]">Roles</div>
-            <div className="flex flex-wrap gap-1">
+        <Card className="lg:col-span-1">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="size-4 text-muted-foreground" /> Dados cadastrais
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <dl className="text-sm">
+              <InfoRow label="CNPJ" value={formatCnpj(org.RegistrationNumber)} />
+              <InfoRow label="Status" value={statusLabel(org.Status)} />
+              <InfoRow label="País" value={org.CountryOfRegistration ?? '—'} />
+              <InfoRow label="Registro" value={org.RegistrationId ?? '—'} />
+            </dl>
+            {(org.AddressLine1 || org.City) && (
+              <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                <MapPin className="mt-0.5 size-4 shrink-0" />
+                <span>
+                  {[org.AddressLine1, org.AddressLine2, org.City, org.Postcode]
+                    .filter(Boolean)
+                    .join(', ')}
+                </span>
+              </div>
+            )}
+            <Separator />
+            <Field label="Roles">
               {roles.length ? (
                 roles.map((r) => (
                   <Badge key={r} tone="info">
@@ -105,20 +125,16 @@ export function ParticipantDetail() {
                   </Badge>
                 ))
               ) : (
-                <span className="text-sm text-[var(--color-muted)]">—</span>
+                <span className="text-sm text-muted-foreground">—</span>
               )}
-            </div>
-          </div>
-          <div className="mt-4">
-            <div className="mb-1 text-xs text-[var(--color-muted)]">Segmento</div>
-            <div className="flex flex-wrap gap-1">
+            </Field>
+            <Field label="Segmento">
               <SegmentBadges pf={seg.pf} pj={seg.pj} />
-            </div>
-          </div>
-          <div className="mt-4">
-            <div className="mb-1 text-xs text-[var(--color-muted)]">Organisation ID</div>
-            <CopyableId id={org.OrganisationId} label="Organisation ID" />
-          </div>
+            </Field>
+            <Field label="Organisation ID">
+              <CopyableId id={org.OrganisationId} label="Organisation ID" />
+            </Field>
+          </CardContent>
         </Card>
 
         <div className="lg:col-span-2">
@@ -126,51 +142,38 @@ export function ParticipantDetail() {
         </div>
       </div>
 
-      <div className="mt-6 mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-semibold">
-          Authorisation Servers ({(org.AuthorisationServers ?? []).length})
+      <div className="mt-8 mb-3 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-heading text-lg font-semibold">
+          Authorisation Servers{' '}
+          <span className="text-muted-foreground">({servers.length})</span>
         </h2>
         <div className="flex flex-wrap items-center gap-3">
           <ExpandAllButton org={org} openIds={openIds} setOpenIds={setOpenIds} />
           <div className="flex items-center gap-2">
-            <span className="text-xs text-[var(--color-muted)]">Agrupar APIs por</span>
-            <div className="flex gap-1">
-              {(
-                [
-                  ['produto', 'Produto'],
-                  ['fase', 'Fase'],
-                  ['nenhum', 'Nenhum'],
-                ] as [GroupMode, string][]
-              ).map(([mode, label]) => (
-                <button
-                  key={mode}
-                  onClick={() => setGroupBy(mode)}
-                  className={`rounded-lg border px-3 py-1.5 text-xs transition ${
-                    groupBy === mode
-                      ? 'border-[var(--color-brand)] bg-[var(--color-brand)]/15 text-[var(--color-brand)]'
-                      : 'border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-muted)] hover:text-[var(--color-text)]'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            <span className="text-xs text-muted-foreground">Agrupar APIs por</span>
+            <Tabs value={groupBy} onValueChange={(v) => setGroupBy(v as GroupMode)}>
+              <TabsList>
+                <TabsTrigger value="produto">Produto</TabsTrigger>
+                <TabsTrigger value="fase">Fase</TabsTrigger>
+                <TabsTrigger value="nenhum">Nenhum</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
         </div>
       </div>
       <div className="flex flex-col gap-3">
-        {(org.AuthorisationServers ?? []).map((srv) => (
+        {servers.map((srv) => (
           <ServerCard
             key={srv.AuthorisationServerId}
             org={org}
             srv={srv}
             groupBy={groupBy}
             open={openIds.has(srv.AuthorisationServerId)}
-            onToggle={() =>
+            onOpenChange={(isOpen) =>
               setOpenIds((prev) => {
                 const next = new Set(prev)
-                if (next.has(srv.AuthorisationServerId)) next.delete(srv.AuthorisationServerId)
-                else next.add(srv.AuthorisationServerId)
+                if (isOpen) next.add(srv.AuthorisationServerId)
+                else next.delete(srv.AuthorisationServerId)
                 return next
               })
             }
@@ -194,13 +197,14 @@ function ExpandAllButton({
   const allOpen = allIds.length > 0 && allIds.every((id) => openIds.has(id))
 
   return (
-    <button
+    <Button
+      variant="outline"
+      size="sm"
       onClick={() => setOpenIds(allOpen ? new Set() : new Set(allIds))}
-      className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs text-[var(--color-muted)] transition hover:border-[var(--color-brand)] hover:text-[var(--color-text)]"
     >
-      {allOpen ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
+      {allOpen ? <ChevronsDownUp /> : <ChevronsUpDown />}
       {allOpen ? 'Recolher todos' : 'Expandir todos'}
-    </button>
+    </Button>
   )
 }
 
@@ -215,20 +219,31 @@ function OrgSummary({ org }: { org: Organisation }) {
     return { servers: (org.AuthorisationServers ?? []).length, apis, endpoints }
   }, [org])
 
+  const stats = [
+    { label: 'Authorisation Servers', value: servers, icon: Server, accent: 'text-info' },
+    { label: 'APIs declaradas', value: apis, icon: Boxes, accent: 'text-foreground' },
+    { label: 'Endpoints de descoberta', value: endpoints, icon: Radar, accent: 'text-foreground' },
+  ]
+
   return (
-    <div className="grid grid-cols-3 gap-3">
-      <Card className="p-4">
-        <div className="text-2xl font-bold text-[var(--color-brand-2)]">{servers}</div>
-        <div className="text-xs text-[var(--color-muted)]">Authorisation Servers</div>
-      </Card>
-      <Card className="p-4">
-        <div className="text-2xl font-bold">{apis}</div>
-        <div className="text-xs text-[var(--color-muted)]">APIs declaradas</div>
-      </Card>
-      <Card className="p-4">
-        <div className="text-2xl font-bold">{endpoints}</div>
-        <div className="text-xs text-[var(--color-muted)]">Endpoints de descoberta</div>
-      </Card>
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {stats.map(({ label, value, icon: Icon, accent }, i) => (
+        <Card key={label} className="relative">
+          <CardContent>
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="text-xs">{label}</span>
+              <Icon className="size-4" />
+            </div>
+            {/* NumberTicker (Magic UI): conta de 0 até o valor. */}
+            <NumberTicker
+              value={value}
+              className={cn('mt-2 block font-heading text-3xl font-semibold tracking-tight', accent)}
+            />
+          </CardContent>
+          {/* BorderBeam (Magic UI): feixe de luz percorrendo a borda do 1º card. */}
+          {i === 0 && <BorderBeam size={80} duration={8} colorFrom="#2ecc9b" colorTo="#3aa0ff" />}
+        </Card>
+      ))}
     </div>
   )
 }
@@ -238,13 +253,13 @@ function ServerCard({
   srv,
   groupBy,
   open,
-  onToggle,
+  onOpenChange,
 }: {
   org: Organisation
   srv: AuthorisationServer
   groupBy: GroupMode
   open: boolean
-  onToggle: () => void
+  onOpenChange: (open: boolean) => void
 }) {
   const apis = srv.ApiResources ?? []
   const certs = srv.AuthorisationServerCertifications ?? []
@@ -257,190 +272,180 @@ function ServerCard({
   const name = serverLabel(org, srv.CustomerFriendlyName)
 
   return (
-    <Card className="overflow-hidden">
-      {/* Cabeçalho: botão esticado (expande/recolhe) por baixo; IdTag e badges
-          ficam por cima para o IdTag copiar e os badges mostrarem o title. */}
-      <div className="relative flex w-full flex-wrap items-center gap-3 px-4 py-3 text-left hover:bg-[var(--color-surface-2)]">
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={open}
-          aria-label={`${name} — ${open ? 'recolher' : 'expandir'} detalhes`}
-          className="absolute inset-0"
-        />
-        {srv.CustomerFriendlyLogoUri ? (
-          <img
-            src={srv.CustomerFriendlyLogoUri}
-            alt=""
-            className="h-8 w-8 rounded object-contain"
-            onError={(e) => (e.currentTarget.style.display = 'none')}
-          />
-        ) : (
-          <div className="h-8 w-8 rounded bg-[var(--color-surface-2)]" />
-        )}
-        <div className="min-w-0 flex-1">
-          <div className="truncate font-medium">{name}</div>
-          <div className="truncate text-xs text-[var(--color-muted)]">
-            {srv.Issuer ?? 'sem issuer'}
-          </div>
-          <div className="mt-1">
-            <IdTag id={srv.AuthorisationServerId} />
-          </div>
-        </div>
-        <div
-          onClick={onToggle}
-          className="relative z-10 flex basis-full cursor-pointer flex-wrap items-center gap-2 sm:basis-auto sm:justify-end"
-        >
-          <Badge
-            tone={isActive(srv.Status) ? 'ok' : 'neutral'}
-            title={`Status no diretório: ${statusLabel(srv.Status)}`}
-          >
-            {statusLabel(srv.Status)}
-          </Badge>
-          {lifecycle.map((b) => (
-            <Badge key={b.label} tone={b.tone} title={b.title}>
-              {b.label}
-            </Badge>
-          ))}
-          <SegmentBadges pf={seg.pf} pj={seg.pj} emptyLabel={null} />
-          <Badge tone="neutral">{apis.length} APIs</Badge>
-          {srv.SupportsRedirect && <Badge tone="neutral">Redirect</Badge>}
-          {srv.SupportsDCR && <Badge tone="neutral">DCR</Badge>}
-          {srv.SupportsCiba && <Badge tone="neutral">CIBA</Badge>}
-          <ChevronDown
-            size={18}
-            className={`text-[var(--color-muted)] transition ${open ? 'rotate-180' : ''}`}
-          />
-        </div>
-      </div>
-
-      {open && (
-        <div className="border-t border-[var(--color-border)] px-4 py-4">
-          {/* Identificação do server */}
-          <div className="mb-4">
-            <div className="mb-1 text-xs text-[var(--color-muted)]">
-              Authorisation Server ID
+    <Collapsible open={open} onOpenChange={onOpenChange} asChild>
+      <Card className="gap-0 py-0">
+        {/* Cabeçalho: gatilho esticado (expande/recolhe) por baixo; IdTag e
+            badges ficam por cima para o IdTag copiar e os badges mostrarem o tooltip. */}
+        <div className="relative flex w-full flex-wrap items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              aria-label={`${name} — ${open ? 'recolher' : 'expandir'} detalhes`}
+              className="absolute inset-0 rounded-t-xl"
+            />
+          </CollapsibleTrigger>
+          {srv.CustomerFriendlyLogoUri ? (
+            <img
+              src={srv.CustomerFriendlyLogoUri}
+              alt=""
+              className="size-9 rounded-md bg-white/5 object-contain p-0.5"
+              onError={(e) => (e.currentTarget.style.display = 'none')}
+            />
+          ) : (
+            <div className="size-9 rounded-md bg-secondary" />
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="truncate font-medium">{name}</div>
+            <div className="truncate text-xs text-muted-foreground">
+              {srv.Issuer ?? 'sem issuer'}
             </div>
-            <CopyableId id={srv.AuthorisationServerId} label="Authorisation Server ID" />
+            <div className="mt-1">
+              <IdTag id={srv.AuthorisationServerId} label="Authorisation Server ID" />
+            </div>
           </div>
+          <div
+            onClick={() => onOpenChange(!open)}
+            className="relative z-10 flex basis-full cursor-pointer flex-wrap items-center gap-1.5 sm:basis-auto sm:justify-end"
+          >
+            <Badge
+              tone={isActive(srv.Status) ? 'ok' : 'neutral'}
+              title={`Status no diretório: ${statusLabel(srv.Status)}`}
+            >
+              {statusLabel(srv.Status)}
+            </Badge>
+            {lifecycle.map((b) => (
+              <Badge key={b.label} tone={b.tone} title={b.title}>
+                {b.label}
+              </Badge>
+            ))}
+            <SegmentBadges pf={seg.pf} pj={seg.pj} emptyLabel={null} />
+            <Badge tone="neutral">{apis.length} APIs</Badge>
+            {srv.SupportsRedirect && <Badge tone="neutral">Redirect</Badge>}
+            {srv.SupportsDCR && <Badge tone="neutral">DCR</Badge>}
+            {srv.SupportsCiba && <Badge tone="neutral">CIBA</Badge>}
+            <ChevronDown
+              className={cn('size-4 text-muted-foreground transition-transform', open && 'rotate-180')}
+            />
+          </div>
+        </div>
 
-          {/* Ciclo de vida (descontinuação / aposentadoria) */}
-          {lifecycle.length > 0 && (
-            <div className="mb-4">
-              <div className="mb-1 text-xs text-[var(--color-muted)]">Ciclo de vida</div>
-              <div className="flex flex-col gap-1">
+        <CollapsibleContent className={collapseAnim}>
+          <div className="flex flex-col gap-5 border-t px-4 py-4">
+            {/* Identificação + links */}
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <Field label="Authorisation Server ID">
+                <CopyableId id={srv.AuthorisationServerId} label="Authorisation Server ID" />
+              </Field>
+              <div className="flex flex-wrap gap-2">
+                {srv.OpenIDDiscoveryDocument && (
+                  <LinkButton href={srv.OpenIDDiscoveryDocument}>OIDC Discovery</LinkButton>
+                )}
+                {srv.DeveloperPortalUri && (
+                  <LinkButton href={srv.DeveloperPortalUri}>Portal do Dev</LinkButton>
+                )}
+                {srv.TermsOfServiceUri && (
+                  <LinkButton href={srv.TermsOfServiceUri}>Termos de Uso</LinkButton>
+                )}
+              </div>
+            </div>
+
+            {/* Ciclo de vida (descontinuação / aposentadoria) */}
+            {lifecycle.length > 0 && (
+              <Field label="Ciclo de vida" vertical>
                 {lifecycle.map((b) => (
                   <div key={b.label} className="flex items-center gap-2 text-sm">
                     <Badge tone={b.tone}>{b.label}</Badge>
-                    <span className="text-[var(--color-muted)]">{b.title}</span>
+                    <span className="text-muted-foreground">{b.title}</span>
                   </div>
                 ))}
-              </div>
-            </div>
-          )}
+              </Field>
+            )}
 
-          {/* Links do server */}
-          <div className="mb-4 flex flex-wrap gap-2 text-xs">
-            {srv.OpenIDDiscoveryDocument && (
-              <LinkPill href={srv.OpenIDDiscoveryDocument}>OIDC Discovery</LinkPill>
-            )}
-            {srv.DeveloperPortalUri && (
-              <LinkPill href={srv.DeveloperPortalUri}>Portal do Dev</LinkPill>
-            )}
-            {srv.TermsOfServiceUri && (
-              <LinkPill href={srv.TermsOfServiceUri}>Termos de Uso</LinkPill>
-            )}
-          </div>
-
-          {/* Certificações */}
-          {certs.length > 0 && (
-            <div className="mb-4">
-              <div className="mb-2 text-xs font-semibold text-[var(--color-muted)]">
-                Certificações do server
-              </div>
-              <div className="flex flex-col gap-1">
+            {/* Certificações */}
+            {certs.length > 0 && (
+              <Field label="Certificações do server" vertical>
                 {certs.map((c) => {
                   const exp = parseCertDate(c.CertificationExpirationDate)
                   return (
                     <div
                       key={c.CertificationId}
-                      className="flex flex-wrap items-center gap-2 rounded-lg bg-[var(--color-surface-2)] px-3 py-2 text-sm"
+                      className="flex flex-wrap items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-sm"
                     >
                       <CertHealthBadge health={certHealth(exp)} />
-                      <span className="text-[var(--color-muted)]">
+                      <span className="text-muted-foreground">
                         {c.ProfileVariant ?? c.ProfileType ?? '—'}
                       </span>
-                      <span className="ml-auto text-xs text-[var(--color-muted)]">
+                      <span className="ml-auto font-mono text-xs text-muted-foreground">
                         {c.CertificationStartDate} → {c.CertificationExpirationDate}
                       </span>
                     </div>
                   )
                 })}
-              </div>
-            </div>
-          )}
+              </Field>
+            )}
 
-          {/* APIs agrupadas por produto/fase */}
-          <div className="text-xs font-semibold text-[var(--color-muted)]">
-            APIs ({apis.length})
-          </div>
-          <div className="mt-2 flex flex-col gap-4">
-            {groups.map((group) => (
-              <div key={group.key}>
-                {group.label && (
-                  <div className="mb-2 flex items-center gap-2">
-                    <span className="text-sm font-medium text-[var(--color-text)]">
-                      {group.label}
-                    </span>
-                    <Badge tone="neutral">{group.apis.length}</Badge>
-                    <div className="h-px flex-1 bg-[var(--color-border)]" />
+            {/* APIs agrupadas por produto/fase */}
+            <div className="flex flex-col gap-4">
+              <div className="text-xs font-medium text-muted-foreground">APIs ({apis.length})</div>
+              {groups.map((group) => (
+                <div key={group.key}>
+                  {group.label && (
+                    <div className="mb-2 flex items-center gap-2">
+                      <span className="text-sm font-medium">{group.label}</span>
+                      <Badge tone="neutral">{group.apis.length}</Badge>
+                      <Separator className="flex-1" />
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+                    {group.apis.map((api) => (
+                      <ApiCard key={api.ApiResourceId} api={api} />
+                    ))}
                   </div>
-                )}
-                <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-                  {group.apis.map((api) => (
-                    <ApiCard key={api.ApiResourceId} api={api} />
-                  ))}
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
-    </Card>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   )
 }
 
 function ApiCard({ api }: { api: ApiResource }) {
+  const endpoints = api.ApiDiscoveryEndpoints ?? []
   return (
-    <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+    <div className="rounded-lg bg-muted/40 p-3 ring-1 ring-foreground/5">
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-medium">{prettyFamily(api.ApiFamilyType)}</span>
         <Badge tone={api.Status === 'Active' ? 'ok' : 'neutral'}>v{api.ApiVersion}</Badge>
       </div>
-      <div className="mt-1 text-xs text-[var(--color-muted)]">
+      <div className="mt-1 text-xs text-muted-foreground">
         {api.CertificationStatus ?? 'sem certificação'}
         {api.FamilyComplete ? ' · família completa' : ''}
       </div>
-      {(api.ApiDiscoveryEndpoints ?? []).length > 0 && (
-        <details className="mt-2">
-          <summary className="cursor-pointer text-xs text-[var(--color-brand-2)]">
-            {api.ApiDiscoveryEndpoints.length} endpoints
-          </summary>
-          <ul className="mt-1 space-y-1">
-            {api.ApiDiscoveryEndpoints.map((e) => (
-              <li key={e.ApiDiscoveryId}>
-                <a
-                  href={e.ApiEndpoint}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="break-all text-xs text-[var(--color-muted)] hover:text-[var(--color-brand-2)]"
-                >
-                  {e.ApiEndpoint}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </details>
+      {endpoints.length > 0 && (
+        <Collapsible className="mt-2">
+          <CollapsibleTrigger className="group inline-flex items-center gap-1 text-xs text-info hover:underline">
+            {endpoints.length} endpoints
+            <ChevronDown className="size-3 transition-transform group-data-[state=open]:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className={collapseAnim}>
+            <ul className="mt-1 space-y-1">
+              {endpoints.map((e) => (
+                <li key={e.ApiDiscoveryId}>
+                  <a
+                    href={e.ApiEndpoint}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-mono text-[11px] break-all text-muted-foreground hover:text-info"
+                  >
+                    {e.ApiEndpoint}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </CollapsibleContent>
+        </Collapsible>
       )}
     </div>
   )
@@ -448,22 +453,36 @@ function ApiCard({ api }: { api: ApiResource }) {
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between gap-3 border-b border-[var(--color-border)] py-1.5 text-sm last:border-0">
-      <span className="text-[var(--color-muted)]">{label}</span>
-      <span className="text-right font-medium">{value}</span>
+    <div className="flex justify-between gap-3 border-b py-1.5 last:border-0">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="text-right font-medium">{value}</dd>
     </div>
   )
 }
 
-function LinkPill({ href, children }: { href: string; children: React.ReactNode }) {
+function Field({
+  label,
+  vertical = false,
+  children,
+}: {
+  label: string
+  vertical?: boolean
+  children: React.ReactNode
+}) {
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className="inline-flex items-center gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-1 hover:border-[var(--color-brand-2)] hover:text-[var(--color-brand-2)]"
-    >
-      {children} <ExternalLink size={12} />
-    </a>
+    <div>
+      <div className="mb-1.5 text-xs text-muted-foreground">{label}</div>
+      <div className={vertical ? 'flex flex-col gap-1' : 'flex flex-wrap gap-1'}>{children}</div>
+    </div>
+  )
+}
+
+function LinkButton({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Button variant="outline" size="xs" asChild>
+      <a href={href} target="_blank" rel="noreferrer">
+        {children} <ExternalLink />
+      </a>
+    </Button>
   )
 }
