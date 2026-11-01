@@ -3,7 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { DirectoryProvider, useDirectory } from './lib/DirectoryContext'
 import { Layout } from './components/Layout'
 import { ScrollToTop } from './components/ScrollToTop'
-import { ErrorState, ListSkeleton, Spinner } from './components/ui'
+import { ErrorState, ListSkeleton, Spinner } from './components/shared'
 import { Participants } from './pages/Participants'
 import { ParticipantDetail } from './pages/ParticipantDetail'
 
@@ -14,6 +14,8 @@ const Apis = lazy(() => import('./pages/Apis').then((m) => ({ default: m.Apis })
 const Certifications = lazy(() =>
   import('./pages/Certifications').then((m) => ({ default: m.Certifications })),
 )
+// Vitrine de efeitos (Magic UI / Aceternity): pesada (inclui three.js), sob demanda.
+const Showcase = lazy(() => import('./pages/Showcase').then((m) => ({ default: m.Showcase })))
 
 function AppContent() {
   const { loading, error, organisations, refresh } = useDirectory()
@@ -36,6 +38,7 @@ function AppContent() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/apis" element={<Apis />} />
         <Route path="/certificacoes" element={<Certifications />} />
+        <Route path="/vitrine" element={<Showcase />} />
         <Route
           path="*"
           element={<div className="py-16 text-center">Página não encontrada.</div>}

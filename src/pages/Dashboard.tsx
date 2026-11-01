@@ -13,7 +13,7 @@ import { useMemo } from 'react'
 import { Building2, Boxes, Server, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { useDirectory } from '../lib/DirectoryContext'
 import { computeStats, prettyFamily } from '../lib/directory'
-import { Card, KpiCard, PageHeader } from '../components/ui'
+import { Card, KpiCard, PageHeader } from '../components/shared'
 
 const ROLE_COLORS = ['#2ecc9b', '#3aa0ff', '#f5a524', '#f04d6a', '#a78bfa', '#22d3ee', '#e879f9']
 
@@ -134,7 +134,7 @@ export function Dashboard() {
               />
             </PieChart>
           </ResponsiveContainer>
-          <div className="mt-2 text-xs text-[var(--color-muted)]">
+          <div className="mt-2 text-xs text-muted-foreground">
             CONTA · DADOS · PAGTO · CCORR — habilitações declaradas por organização.
           </div>
         </Card>
@@ -148,10 +148,10 @@ export function Dashboard() {
             {stats.certStatusCounts.map((s) => (
               <div
                 key={s.name}
-                className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-3"
+                className="rounded-lg border border-border bg-secondary px-4 py-3"
               >
                 <div className="text-2xl font-bold">{s.value.toLocaleString('pt-BR')}</div>
-                <div className="text-xs text-[var(--color-muted)]">{s.name}</div>
+                <div className="text-xs text-muted-foreground">{s.name}</div>
               </div>
             ))}
           </div>
@@ -160,24 +160,24 @@ export function Dashboard() {
         {/* Segmentos PF/PJ */}
         <Card className="p-5">
           <h2 className="mb-1 font-semibold">Segmentos atendidos</h2>
-          <p className="mb-4 text-xs text-[var(--color-muted)]">
+          <p className="mb-4 text-xs text-muted-foreground">
             Organizações com ao menos um server marcado como PF/PJ.
           </p>
           <div className="flex gap-4">
-            <div className="flex-1 rounded-lg border border-[var(--color-ok)]/30 bg-[var(--color-ok)]/10 px-4 py-3">
-              <div className="text-3xl font-bold text-[var(--color-ok)]">{stats.orgsPf}</div>
-              <div className="text-xs text-[var(--color-muted)]">
+            <div className="flex-1 rounded-lg border border-ok/30 bg-ok/10 px-4 py-3">
+              <div className="text-3xl font-bold text-ok">{stats.orgsPf}</div>
+              <div className="text-xs text-muted-foreground">
                 PF — Pessoa Física
               </div>
             </div>
-            <div className="flex-1 rounded-lg border border-[var(--color-warn)]/30 bg-[var(--color-warn)]/10 px-4 py-3">
-              <div className="text-3xl font-bold text-[var(--color-warn)]">{stats.orgsPj}</div>
-              <div className="text-xs text-[var(--color-muted)]">
+            <div className="flex-1 rounded-lg border border-warn/30 bg-warn/10 px-4 py-3">
+              <div className="text-3xl font-bold text-warn">{stats.orgsPj}</div>
+              <div className="text-xs text-muted-foreground">
                 PJ — Pessoa Jurídica
               </div>
             </div>
           </div>
-          <div className="mt-2 text-xs text-[var(--color-muted)]">
+          <div className="mt-2 text-xs text-muted-foreground">
             de {stats.totalOrganisations} organizações
           </div>
         </Card>

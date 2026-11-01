@@ -1,10 +1,21 @@
 import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Search, ChevronRight, X } from 'lucide-react'
+import { Search, ChevronRight, X, Server, Boxes } from 'lucide-react'
 import { useDirectory } from '../lib/DirectoryContext'
 import { formatCnpj, isActive, orgSegments, statusLabel } from '../lib/directory'
 import { matchOrganisation } from '../lib/search'
-import { Badge, Card, IdTag, PageHeader, SegmentBadges } from '../components/ui'
+import { Badge, IdTag, PageHeader, SegmentBadges } from '../components/shared'
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from '@/components/ui/input-group'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { MagicCard } from '@/components/ui/magic-card'
+import { BlurFade } from '@/components/ui/blur-fade'
+
+type SegmentFilter = 'pf' | 'pj' | 'sem'
 
 export function Participants() {
   const { organisations } = useDirectory()
@@ -31,11 +42,25 @@ export function Participants() {
     )
   }
 
-  // Handlers garantem exclusividade entre "Sem segmento" e PF/PJ.
-  const togglePf = () => updateParams({ pf: pf ? null : '1', sem: null })
-  const togglePj = () => updateParams({ pj: pj ? null : '1', sem: null })
-  const toggleNoSegment = () =>
-    updateParams({ sem: noSegment ? null : '1', pf: null, pj: null })
+  const segmentValue: SegmentFilter[] = [
+    ...(pf ? (['pf'] as const) : []),
+    ...(pj ? (['pj'] as const) : []),
+    ...(noSegment ? (['sem'] as const) : []),
+  ]
+
+  // "Sem segmento" é exclusivo com PF/PJ: o que acabou de ser marcado vence.
+  const onSegmentChange = (values: string[]) => {
+    const added = values.find((v) => !segmentValue.includes(v as SegmentFilter))
+    if (added === 'sem') {
+      updateParams({ sem: '1', pf: null, pj: null })
+      return
+    }
+    updateParams({
+      pf: values.includes('pf') ? '1' : null,
+      pj: values.includes('pj') ? '1' : null,
+      sem: added ? null : values.includes('sem') ? '1' : null,
+    })
+  }
 
   const filtered = useMemo(() => {
     return organisations
@@ -65,133 +90,126 @@ export function Participants() {
       />
 
       {/* Barra de busca/filtros fixa ao rolar */}
-      <div className="sticky top-0 z-10 -mx-2 mb-4 flex flex-wrap items-center gap-3 bg-[var(--color-bg)]/95 px-2 py-3 backdrop-blur">
-        <div className="relative flex-1 min-w-64">
-          <Search
-            size={16}
-            className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-muted)]"
-          />
-          <input
+      <div className="sticky top-0 z-10 -mx-2 mb-4 flex flex-wrap items-center gap-3 bg-background/80 px-2 py-3 backdrop-blur-md">
+        <InputGroup className="min-w-64 flex-1 bg-card">
+          <InputGroupAddon>
+            <Search />
+          </InputGroupAddon>
+          <InputGroupInput
             value={query}
             onChange={(e) => updateParams({ q: e.target.value })}
             placeholder="Buscar por nome, marca, CNPJ ou ID (org/server)…"
-            className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-2 pr-8 pl-9 text-sm outline-none focus:border-[var(--color-brand)]"
+            aria-label="Buscar participantes"
           />
           {query && (
-            <button
-              onClick={() => updateParams({ q: null })}
-              aria-label="Limpar busca"
-              title="Limpar busca"
-              className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-0.5 text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
-            >
-              <X size={14} />
-            </button>
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton
+                size="icon-xs"
+                aria-label="Limpar busca"
+                onClick={() => updateParams({ q: null })}
+              >
+                <X />
+              </InputGroupButton>
+            </InputGroupAddon>
           )}
-        </div>
-        <div className="flex gap-1">
-          <FilterChip active={pf} onClick={togglePf}>
+        </InputGroup>
+        <ToggleGroup
+          type="multiple"
+          variant="outline"
+          value={segmentValue}
+          onValueChange={onSegmentChange}
+          aria-label="Filtrar por segmento"
+        >
+          <ToggleGroupItem value="pf" className="data-[state=on]:bg-ok/15 data-[state=on]:text-ok">
             PF
-          </FilterChip>
-          <FilterChip active={pj} onClick={togglePj}>
+          </ToggleGroupItem>
+          <ToggleGroupItem value="pj" className="data-[state=on]:bg-warn/15 data-[state=on]:text-warn">
             PJ
-          </FilterChip>
-          <FilterChip active={noSegment} onClick={toggleNoSegment}>
-            Sem segmento
-          </FilterChip>
-        </div>
+          </ToggleGroupItem>
+          <ToggleGroupItem value="sem">Sem segmento</ToggleGroupItem>
+        </ToggleGroup>
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {filtered.map(({ org, match }) => {
-          const serverCount = (org.AuthorisationServers ?? []).length
-          const apiCount = (org.AuthorisationServers ?? []).reduce(
-            (n, s) => n + (s.ApiResources ?? []).length,
-            0,
-          )
+        {filtered.map(({ org, match }, i) => {
+          const servers = org.AuthorisationServers ?? []
+          const apiCount = servers.reduce((n, s) => n + (s.ApiResources ?? []).length, 0)
           const seg = orgSegments(org)
           const { matchedBrands } = match
           return (
-            <Card
-              key={org.OrganisationId}
-              className="relative h-full p-4 transition duration-150 hover:-translate-y-0.5 hover:border-[var(--color-brand)] hover:shadow-lg hover:shadow-black/20"
-            >
-              {/* Link esticado sobre o card inteiro; o IdTag fica por cima dele. */}
-              <Link
-                to={`/participantes/${org.OrganisationId}`}
-                aria-label={org.OrganisationName}
-                className="absolute inset-0 rounded-xl"
-              />
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="truncate font-semibold" title={org.OrganisationName}>
-                    {org.OrganisationName}
+            // BlurFade (Magic UI): entrada suave em cascata, só nos primeiros cards.
+            <BlurFade key={org.OrganisationId} delay={Math.min(i, 12) * 0.03} inView>
+              {/* MagicCard (Magic UI): borda com gradiente que segue o mouse. */}
+              <MagicCard
+                className="h-full rounded-xl"
+                gradientFrom="#2ecc9b"
+                gradientTo="#3aa0ff"
+                gradientColor="#1b2440"
+                gradientSize={240}
+              >
+                <div className="relative flex h-full flex-col p-4">
+                  {/* Link esticado sobre o card inteiro; o IdTag fica por cima dele. */}
+                  <Link
+                    to={`/participantes/${org.OrganisationId}`}
+                    // Marca que viemos da lista: o "voltar" do detalhe usa o
+                    // histórico e preserva busca/filtros.
+                    state={{ fromList: true }}
+                    aria-label={org.OrganisationName}
+                    className="absolute inset-0 rounded-xl"
+                  />
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="truncate font-medium" title={org.OrganisationName}>
+                        {org.OrganisationName}
+                      </div>
+                      <div className="mt-0.5 font-mono text-xs text-muted-foreground">
+                        {formatCnpj(org.RegistrationNumber)}
+                      </div>
+                    </div>
+                    <ChevronRight size={18} className="shrink-0 text-muted-foreground" />
                   </div>
-                  <div className="mt-0.5 text-xs text-[var(--color-muted)]">
-                    {formatCnpj(org.RegistrationNumber)}
-                  </div>
-                </div>
-                <ChevronRight size={18} className="shrink-0 text-[var(--color-muted)]" />
-              </div>
-              <div className="mt-3 flex flex-wrap gap-1">
-                <Badge
-                  tone={isActive(org.Status) ? 'ok' : 'neutral'}
-                  title={`Status no diretório: ${statusLabel(org.Status)}`}
-                >
-                  {statusLabel(org.Status)}
-                </Badge>
-                <SegmentBadges pf={seg.pf} pj={seg.pj} emptyLabel={null} />
-              </div>
-              {matchedBrands.length > 0 && (
-                <div className="mt-2 flex flex-wrap items-center gap-1 text-[11px] text-[var(--color-muted)]">
-                  <span>Marca:</span>
-                  {matchedBrands.slice(0, 3).map((b) => (
-                    <Badge key={b} tone="info">
-                      {b}
+                  <div className="mt-3 flex flex-wrap gap-1">
+                    <Badge tone={isActive(org.Status) ? 'ok' : 'neutral'}>
+                      {statusLabel(org.Status)}
                     </Badge>
-                  ))}
-                  {matchedBrands.length > 3 && <span>+{matchedBrands.length - 3}</span>}
+                    <SegmentBadges pf={seg.pf} pj={seg.pj} emptyLabel={null} />
+                  </div>
+                  {matchedBrands.length > 0 && (
+                    <div className="mt-2 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
+                      <span>Marca:</span>
+                      {matchedBrands.slice(0, 3).map((b) => (
+                        <Badge key={b} tone="info">
+                          {b}
+                        </Badge>
+                      ))}
+                      {matchedBrands.length > 3 && <span>+{matchedBrands.length - 3}</span>}
+                    </div>
+                  )}
+                  <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1">
+                      <Server size={12} /> {servers.length} servers
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <Boxes size={12} /> {apiCount} APIs
+                    </span>
+                  </div>
+                  {/* Empurra o ID para o rodapé em cards de alturas diferentes. */}
+                  <div className="flex-1" />
+                  <div className="mt-3 border-t pt-3">
+                    <IdTag id={org.OrganisationId} label="Organisation ID" className="w-full" />
+                  </div>
                 </div>
-              )}
-              <div className="mt-3 flex gap-4 text-xs text-[var(--color-muted)]">
-                <span>{serverCount} servers</span>
-                <span>{apiCount} APIs</span>
-              </div>
-              <div className="mt-3 border-t border-[var(--color-border)] pt-3">
-                <IdTag id={org.OrganisationId} className="w-full" />
-              </div>
-            </Card>
+              </MagicCard>
+            </BlurFade>
           )
         })}
       </div>
 
       {filtered.length === 0 && (
-        <div className="py-16 text-center text-[var(--color-muted)]">
+        <div className="py-16 text-center text-muted-foreground">
           Nenhuma organização encontrada.
         </div>
       )}
     </>
-  )
-}
-
-function FilterChip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`rounded-lg border px-3 py-2 text-sm transition ${
-        active
-          ? 'border-[var(--color-brand)] bg-[var(--color-brand)]/15 text-[var(--color-brand)]'
-          : 'border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-muted)] hover:text-[var(--color-text)]'
-      }`}
-    >
-      {children}
-    </button>
   )
 }
