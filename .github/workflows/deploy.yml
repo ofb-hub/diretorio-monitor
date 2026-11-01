@@ -3,6 +3,10 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  # PRs para a main rodam lint, testes e build (sem publicar), para ver o
+  # resultado no próprio PR antes do merge.
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 # Permissões necessárias para publicar no GitHub Pages via Actions.
@@ -11,9 +15,10 @@ permissions:
   pages: write
   id-token: write
 
-# Um deploy por vez; cancela runs antigos ainda em andamento.
+# Um run por ref; cancela runs antigos ainda em andamento. Agrupar por ref
+# evita que o run de um PR cancele um deploy da main (e vice-versa).
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -35,19 +40,25 @@ jobs:
 
       - run: npm run build
 
+      # Daqui para baixo é só publicação — não roda em PR.
+
       # SPA fallback: GitHub Pages serve 404.html preservando a URL,
       # então uma cópia do index.html faz os links diretos (deep links) funcionarem.
-      - run: cp dist/index.html dist/404.html
+      - if: github.event_name != 'pull_request'
+        run: cp dist/index.html dist/404.html
 
-      - uses: actions/configure-pages@v5
+      - if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
         with:
           enablement: true
 
-      - uses: actions/upload-pages-artifact@v3
+      - if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
   deploy:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     environment:
