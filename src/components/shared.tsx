@@ -10,6 +10,8 @@ import { Badge as UiBadge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { DotPattern } from '@/components/ui/dot-pattern'
+import { NumberTicker } from '@/components/ui/number-ticker'
 
 // ---- Badge ----
 
@@ -149,24 +151,65 @@ export function ErrorState({
 
 // ---- Cabeçalho de página ----
 
+// Bloco com fundo de pontinhos (DotPattern, Magic UI) que somem em direção ao
+// título e um brilho verde/azul no canto. `eyebrow` é uma linha pequena acima
+// do título (ex.: <LiveBadge />); `actions` fica à direita (ou embaixo, no mobile).
 export function PageHeader({
   title,
   subtitle,
+  eyebrow,
   actions,
 }: {
   title: string
   subtitle?: ReactNode
+  eyebrow?: ReactNode
   actions?: ReactNode
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground">
-          {title}
-        </h1>
-        {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
+    <div className="relative isolate mb-6 overflow-hidden rounded-2xl bg-card/60 px-5 py-5 ring-1 ring-foreground/10 sm:px-6">
+      <DotPattern
+        width={18}
+        height={18}
+        cr={1}
+        className="-z-10 text-foreground/10 [mask-image:linear-gradient(to_left,white,transparent_65%)]"
+      />
+      <div className="pointer-events-none absolute -top-24 -right-16 -z-10 size-72 rounded-full bg-linear-to-br from-primary/25 to-info/20 blur-3xl" />
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          {eyebrow && <div className="mb-2.5">{eyebrow}</div>}
+          <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+            {title}
+          </h1>
+          {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
+        </div>
+        {actions}
       </div>
-      {actions}
+    </div>
+  )
+}
+
+/** Selo "ao vivo" com ponto pulsando — os dados se atualizam sozinhos. */
+export function LiveBadge({ children = 'Dados ao vivo do diretório' }: { children?: ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary ring-1 ring-primary/20">
+      <span className="relative flex size-2">
+        <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-60" />
+        <span className="relative inline-flex size-2 rounded-full bg-primary" />
+      </span>
+      {children}
+    </span>
+  )
+}
+
+/** Número em destaque com contagem animada (NumberTicker) e rótulo. */
+export function StatPill({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="rounded-xl bg-background/60 px-3.5 py-2 ring-1 ring-foreground/10 backdrop-blur">
+      <NumberTicker
+        value={value}
+        className="block font-heading text-xl font-semibold tracking-tight tabular-nums"
+      />
+      <div className="text-[11px] text-muted-foreground">{label}</div>
     </div>
   )
 }
