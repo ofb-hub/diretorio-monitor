@@ -22,21 +22,20 @@ export function LogoMark({ className }: { className?: string }) {
   )
 }
 
-export function Logo({ compact = false }: { compact?: boolean }) {
+/** Símbolo + nome. Na sidebar recolhida, o Layout usa só o LogoMark. */
+export function Logo({ className }: { className?: string }) {
   return (
-    <div className={cn('flex items-center gap-2', compact && 'justify-center')}>
-      <LogoMark className="size-9 shrink-0" />
-      {!compact && (
-        <div className="min-w-0 leading-tight">
-          <div className="truncate font-heading text-[17px] font-semibold tracking-tight">
-            Open<span className="text-primary">Mirror</span>
-          </div>
-          {/* AnimatedShinyText (Magic UI): um brilho atravessa o texto de tempos em tempos. */}
-          <AnimatedShinyText className="mx-0 block truncate text-xs text-muted-foreground/80">
-            Open Finance Brasil
-          </AnimatedShinyText>
+    <div className={cn('flex items-center gap-2.5', className)}>
+      <LogoMark className="size-8 shrink-0" />
+      <div className="min-w-0 leading-none">
+        <div className="truncate font-heading text-lg font-bold tracking-tight">
+          Open<span className="text-primary">Mirror</span>
         </div>
-      )}
+        {/* AnimatedShinyText (Magic UI): um brilho atravessa o texto de tempos em tempos. */}
+        <AnimatedShinyText className="mx-0 mt-1 block truncate text-[11px] font-medium tracking-wide text-muted-foreground/80 uppercase">
+          Open Finance Brasil
+        </AnimatedShinyText>
+      </div>
     </div>
   )
 }
