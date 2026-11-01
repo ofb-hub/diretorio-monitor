@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Search, ChevronRight, X } from 'lucide-react'
 import { useDirectory } from '../lib/DirectoryContext'
 import { formatCnpj, isActive, orgSegments, statusLabel } from '../lib/directory'
+import { matchOrganisation } from '../lib/search'
 import { Badge, Card, IdTag, PageHeader, SegmentBadges } from '../components/ui'
 
 export function Participants() {
@@ -37,40 +38,23 @@ export function Participants() {
     updateParams({ sem: noSegment ? null : '1', pf: null, pj: null })
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    const qDigits = q.replace(/\D/g, '')
     return organisations
       .filter((org) => {
         if (noSegment) {
           const seg = orgSegments(org)
-          if (seg.pf || seg.pj) return false
-        } else if (pf || pj) {
+          return !seg.pf && !seg.pj
+        }
+        if (pf || pj) {
           // Correspondência exata: a seleção define exatamente quais segmentos
           // a org deve ter. PF só -> PF e não PJ; ambos -> exatamente os dois.
           const seg = orgSegments(org)
-          if (seg.pf !== pf || seg.pj !== pj) return false
+          return seg.pf === pf && seg.pj === pj
         }
-        if (!q) return true
-        const nameHit =
-          org.OrganisationName.toLowerCase().includes(q) ||
-          (org.LegalEntityName ?? '').toLowerCase().includes(q)
-        const cnpjHit =
-          qDigits.length > 0 &&
-          (org.RegistrationNumber ?? '').replace(/\D/g, '').includes(qDigits)
-        // Busca por ID: OrganisationId ou qualquer AuthorisationServerId da org.
-        const idHit =
-          org.OrganisationId.toLowerCase().includes(q) ||
-          (org.AuthorisationServers ?? []).some((s) =>
-            s.AuthorisationServerId.toLowerCase().includes(q),
-          )
-        // Busca transitiva por marca: o nome de um Authorisation Server
-        // (ex.: "BV") encontra a organização dona dele.
-        const brandHit = (org.AuthorisationServers ?? []).some((s) =>
-          (s.CustomerFriendlyName ?? '').toLowerCase().includes(q),
-        )
-        return nameHit || cnpjHit || idHit || brandHit
+        return true
       })
-      .sort((a, b) => a.OrganisationName.localeCompare(b.OrganisationName))
+      .map((org) => ({ org, match: matchOrganisation(org, query) }))
+      .filter(({ match }) => match.hit)
+      .sort((a, b) => a.org.OrganisationName.localeCompare(b.org.OrganisationName))
   }, [organisations, query, pf, pj, noSegment])
 
   return (
@@ -118,72 +102,64 @@ export function Participants() {
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {filtered.map((org) => {
+        {filtered.map(({ org, match }) => {
           const serverCount = (org.AuthorisationServers ?? []).length
           const apiCount = (org.AuthorisationServers ?? []).reduce(
             (n, s) => n + (s.ApiResources ?? []).length,
             0,
           )
           const seg = orgSegments(org)
-          // Se o match veio de uma marca (e não do nome da org), mostra qual —
-          // senão a org aparece na busca sem motivo visível.
-          const q = query.trim().toLowerCase()
-          const nameMatched =
-            !q ||
-            org.OrganisationName.toLowerCase().includes(q) ||
-            (org.LegalEntityName ?? '').toLowerCase().includes(q)
-          const matchedBrands = nameMatched
-            ? []
-            : [
-                ...new Set(
-                  (org.AuthorisationServers ?? [])
-                    .map((s) => s.CustomerFriendlyName)
-                    .filter((n): n is string => !!n && n.toLowerCase().includes(q)),
-                ),
-              ]
+          const { matchedBrands } = match
           return (
-            <Link key={org.OrganisationId} to={`/participantes/${org.OrganisationId}`}>
-              <Card className="h-full p-4 transition duration-150 hover:-translate-y-0.5 hover:border-[var(--color-brand)] hover:shadow-lg hover:shadow-black/20">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="truncate font-semibold" title={org.OrganisationName}>
-                      {org.OrganisationName}
-                    </div>
-                    <div className="mt-0.5 text-xs text-[var(--color-muted)]">
-                      {formatCnpj(org.RegistrationNumber)}
-                    </div>
+            <Card
+              key={org.OrganisationId}
+              className="relative h-full p-4 transition duration-150 hover:-translate-y-0.5 hover:border-[var(--color-brand)] hover:shadow-lg hover:shadow-black/20"
+            >
+              {/* Link esticado sobre o card inteiro; o IdTag fica por cima dele. */}
+              <Link
+                to={`/participantes/${org.OrganisationId}`}
+                aria-label={org.OrganisationName}
+                className="absolute inset-0 rounded-xl"
+              />
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="truncate font-semibold" title={org.OrganisationName}>
+                    {org.OrganisationName}
                   </div>
-                  <ChevronRight size={18} className="shrink-0 text-[var(--color-muted)]" />
-                </div>
-                <div className="mt-3 flex flex-wrap gap-1">
-                  <Badge
-                    tone={isActive(org.Status) ? 'ok' : 'neutral'}
-                    title={`Status no diretório: ${statusLabel(org.Status)}`}
-                  >
-                    {statusLabel(org.Status)}
-                  </Badge>
-                  <SegmentBadges pf={seg.pf} pj={seg.pj} emptyLabel={null} />
-                </div>
-                {matchedBrands.length > 0 && (
-                  <div className="mt-2 flex flex-wrap items-center gap-1 text-[11px] text-[var(--color-muted)]">
-                    <span>Marca:</span>
-                    {matchedBrands.slice(0, 3).map((b) => (
-                      <Badge key={b} tone="info">
-                        {b}
-                      </Badge>
-                    ))}
-                    {matchedBrands.length > 3 && <span>+{matchedBrands.length - 3}</span>}
+                  <div className="mt-0.5 text-xs text-[var(--color-muted)]">
+                    {formatCnpj(org.RegistrationNumber)}
                   </div>
-                )}
-                <div className="mt-3 flex gap-4 text-xs text-[var(--color-muted)]">
-                  <span>{serverCount} servers</span>
-                  <span>{apiCount} APIs</span>
                 </div>
-                <div className="mt-3 border-t border-[var(--color-border)] pt-3">
-                  <IdTag id={org.OrganisationId} className="w-full" />
+                <ChevronRight size={18} className="shrink-0 text-[var(--color-muted)]" />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-1">
+                <Badge
+                  tone={isActive(org.Status) ? 'ok' : 'neutral'}
+                  title={`Status no diretório: ${statusLabel(org.Status)}`}
+                >
+                  {statusLabel(org.Status)}
+                </Badge>
+                <SegmentBadges pf={seg.pf} pj={seg.pj} emptyLabel={null} />
+              </div>
+              {matchedBrands.length > 0 && (
+                <div className="mt-2 flex flex-wrap items-center gap-1 text-[11px] text-[var(--color-muted)]">
+                  <span>Marca:</span>
+                  {matchedBrands.slice(0, 3).map((b) => (
+                    <Badge key={b} tone="info">
+                      {b}
+                    </Badge>
+                  ))}
+                  {matchedBrands.length > 3 && <span>+{matchedBrands.length - 3}</span>}
                 </div>
-              </Card>
-            </Link>
+              )}
+              <div className="mt-3 flex gap-4 text-xs text-[var(--color-muted)]">
+                <span>{serverCount} servers</span>
+                <span>{apiCount} APIs</span>
+              </div>
+              <div className="mt-3 border-t border-[var(--color-border)] pt-3">
+                <IdTag id={org.OrganisationId} className="w-full" />
+              </div>
+            </Card>
           )
         })}
       </div>

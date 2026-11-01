@@ -4,19 +4,22 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
-import type { DirectoryStats, Organisation } from '../types'
-import { computeStats, fetchDirectory } from './directory'
+import type { Organisation } from '../types'
+import { CACHE_TTL_MS, fetchDirectory } from './directory'
+
+// De quanto em quanto tempo checamos se os dados venceram. A checagem é barata
+// (só compara datas); a rede só é usada quando o snapshot passou do TTL.
+const AUTO_REFRESH_CHECK_MS = 60 * 1000
 
 interface DirectoryState {
   organisations: Organisation[]
-  stats: DirectoryStats | null
   loading: boolean
   error: string | null
   fetchedAt: number | null
-  fromCache: boolean
   refresh: () => void
 }
 
@@ -27,16 +30,24 @@ export function DirectoryProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [fetchedAt, setFetchedAt] = useState<number | null>(null)
-  const [fromCache, setFromCache] = useState(false)
+  // Espelhos em ref para a checagem periódica não precisar se reinscrever.
+  const fetchedAtRef = useRef<number | null>(null)
+  const inFlightRef = useRef(false)
 
   const load = useCallback(async (force: boolean) => {
+    if (inFlightRef.current) return
+    inFlightRef.current = true
     setLoading(true)
     setError(null)
     try {
-      const { snapshot, fromCache } = await fetchDirectory(force)
-      setOrganisations(snapshot.organisations)
-      setFetchedAt(snapshot.fetchedAt)
-      setFromCache(fromCache)
+      const { snapshot } = await fetchDirectory(force)
+      // Mesmo snapshot de antes (ex.: rede falhou e voltou o cache): não troca a
+      // lista, para não re-renderizar tudo à toa.
+      if (snapshot.fetchedAt !== fetchedAtRef.current) {
+        fetchedAtRef.current = snapshot.fetchedAt
+        setOrganisations(snapshot.organisations)
+        setFetchedAt(snapshot.fetchedAt)
+      }
     } catch (err) {
       setError(
         err instanceof Error
@@ -44,6 +55,7 @@ export function DirectoryProvider({ children }: { children: ReactNode }) {
           : 'Falha ao carregar o diretório',
       )
     } finally {
+      inFlightRef.current = false
       setLoading(false)
     }
   }, [])
@@ -52,22 +64,32 @@ export function DirectoryProvider({ children }: { children: ReactNode }) {
     void load(false)
   }, [load])
 
-  const stats = useMemo(
-    () => (organisations.length ? computeStats(organisations) : null),
-    [organisations],
-  )
+  // Atualização automática: quando o snapshot passa do TTL (15 min, o mesmo
+  // max-age do servidor), busca de novo — só com a aba visível. Ao voltar para
+  // a aba depois de um tempo fora, atualiza na hora se já venceu.
+  useEffect(() => {
+    const refreshIfStale = () => {
+      if (document.hidden) return
+      const at = fetchedAtRef.current
+      if (at !== null && Date.now() - at >= CACHE_TTL_MS) void load(false)
+    }
+    const timer = window.setInterval(refreshIfStale, AUTO_REFRESH_CHECK_MS)
+    document.addEventListener('visibilitychange', refreshIfStale)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', refreshIfStale)
+    }
+  }, [load])
 
   const value = useMemo<DirectoryState>(
     () => ({
       organisations,
-      stats,
       loading,
       error,
       fetchedAt,
-      fromCache,
       refresh: () => void load(true),
     }),
-    [organisations, stats, loading, error, fetchedAt, fromCache, load],
+    [organisations, loading, error, fetchedAt, load],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

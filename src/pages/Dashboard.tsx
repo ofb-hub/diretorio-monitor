@@ -9,15 +9,22 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { useMemo } from 'react'
 import { Building2, Boxes, Server, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { useDirectory } from '../lib/DirectoryContext'
-import { prettyFamily } from '../lib/directory'
+import { computeStats, prettyFamily } from '../lib/directory'
 import { Card, KpiCard, PageHeader } from '../components/ui'
 
 const ROLE_COLORS = ['#2ecc9b', '#3aa0ff', '#f5a524', '#f04d6a', '#a78bfa', '#22d3ee', '#e879f9']
 
 export function Dashboard() {
-  const { stats } = useDirectory()
+  const { organisations } = useDirectory()
+  // Calculado só aqui: o Dashboard está fora do menu e não deve custar nada
+  // para quem só usa Participantes.
+  const stats = useMemo(
+    () => (organisations.length ? computeStats(organisations) : null),
+    [organisations],
+  )
   if (!stats) return null
 
   const topFamilies = stats.apiFamilyCounts.slice(0, 12).map((f) => ({

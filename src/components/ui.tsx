@@ -169,16 +169,15 @@ export function PageHeader({
 // ---- Badge de status de certificação ----
 
 // ---- Tag de ID (destaque, clique copia) ----
-// Usado nos cards/headers. É um <span role="button"> (não <button>) para
-// poder viver dentro de <a>/<button> sem HTML inválido; o clique copia o ID
-// e NÃO navega/expande (preventDefault + stopPropagation).
+// Usado nos cards/headers clicáveis. Esses cards não envolvem o conteúdo num
+// <a>/<button>: usam um link/botão "esticado" (absolute inset-0) por baixo, e a
+// tag fica acima dele (relative z-10) — assim é um <button> de verdade, sem
+// elemento interativo aninhado.
 
 export function IdTag({ id, className = '' }: { id: string; className?: string }) {
   const [copied, setCopied] = useState(false)
 
-  const copy = async (e: React.MouseEvent | React.KeyboardEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
+  const copy = async () => {
     try {
       await navigator.clipboard.writeText(id)
       setCopied(true)
@@ -189,15 +188,12 @@ export function IdTag({ id, className = '' }: { id: string; className?: string }
   }
 
   return (
-    <span
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       onClick={copy}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') void copy(e)
-      }}
       title={copied ? 'Copiado!' : `Clique para copiar: ${id}`}
-      className={`inline-flex max-w-full cursor-pointer items-center gap-1.5 rounded-md border border-[var(--color-brand-2)]/30 bg-[var(--color-brand-2)]/10 px-2 py-0.5 transition hover:border-[var(--color-brand-2)]/70 ${className}`}
+      aria-label={`Copiar ID ${id}`}
+      className={`relative z-10 inline-flex max-w-full cursor-pointer items-center gap-1.5 rounded-md border border-[var(--color-brand-2)]/30 bg-[var(--color-brand-2)]/10 px-2 py-0.5 transition hover:border-[var(--color-brand-2)]/70 ${className}`}
     >
       <span className="text-[10px] font-bold tracking-wider text-[var(--color-brand-2)] uppercase">
         ID
@@ -208,7 +204,7 @@ export function IdTag({ id, className = '' }: { id: string; className?: string }
       ) : (
         <Copy size={11} className="shrink-0 text-[var(--color-muted)] opacity-60" />
       )}
-    </span>
+    </button>
   )
 }
 
